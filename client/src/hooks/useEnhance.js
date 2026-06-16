@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { enhanceImage } from '../api/enhance.api.js';
+import { compressImage } from '../utils/compressImage.js';
 
 /**
  * Encapsulates the enhancement request lifecycle: loading, upload progress,
@@ -24,9 +25,16 @@ export function useEnhance() {
 
     const toastId = toast.loading('Enhancing your image…');
     try {
+      // Compress in the browser first (keeps uploads under the serverless body
+      // limit and speeds things up). The backend normalises again with sharp.
+      const [vehicleC, backgroundC] = await Promise.all([
+        compressImage(vehicle),
+        background ? compressImage(background) : Promise.resolve(null),
+      ]);
+
       const data = await enhanceImage({
-        vehicle,
-        background,
+        vehicle: vehicleC,
+        background: backgroundC,
         notes,
         onUploadProgress: setUploadPercent,
       });

@@ -17,6 +17,10 @@ export function createApp() {
 
   app.disable('x-powered-by');
 
+  // Behind Vercel / a reverse proxy: trust the first proxy hop so the client's
+  // real IP (X-Forwarded-For) is used for rate limiting and logging.
+  if (config.isProd) app.set('trust proxy', 1);
+
   // Security headers. crossOriginResourcePolicy relaxed so image data URLs work cross-origin.
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
