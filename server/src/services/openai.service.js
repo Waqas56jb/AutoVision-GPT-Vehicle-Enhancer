@@ -17,14 +17,17 @@ import {
  * @param {Buffer} params.vehicleBuffer   - normalised vehicle image (PNG)
  * @param {Buffer|null} params.backgroundBuffer - normalised background image (PNG) or null
  * @param {string} [params.notes]         - optional dealer instructions
- * @returns {Promise<{ b64: string, model: string, size: string, quality: string, usedBackground: boolean }>}
+ * @param {string} [params.framing]       - 'standard' | 'large' | 'hero'
+ * @param {string} [params.size]          - output size override (e.g. '1536x1024')
+ * @returns {Promise<{ b64: string, model: string, size: string, quality: string, usedBackground: boolean, framing: string }>}
  */
-export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, notes }) {
+export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, notes, framing, size }) {
   const usedBackground = Boolean(backgroundBuffer);
+  const outputSize = size || config.openai.imageSize;
 
   const prompt = usedBackground
-    ? buildVehicleEnhancementPrompt({ notes })
-    : buildStudioEnhancementPrompt({ notes });
+    ? buildVehicleEnhancementPrompt({ notes, framing })
+    : buildStudioEnhancementPrompt({ notes, framing });
 
   // Order matters: [0] vehicle, [1] background (the prompt references this order).
   const imageFiles = [
@@ -36,7 +39,7 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
 
   logger.info(
     `Requesting ${config.openai.imageModel} edit ` +
-      `(size=${config.openai.imageSize}, quality=${config.openai.imageQuality}, background=${usedBackground})`
+      `(size=${outputSize}, quality=${config.openai.imageQuality}, framing=${framing || 'default'}, background=${usedBackground})`
   );
 
   let response;
@@ -45,7 +48,7 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
       model: config.openai.imageModel,
       image: imageFiles,
       prompt,
-      size: config.openai.imageSize,
+      size: outputSize,
       quality: config.openai.imageQuality,
       n: 1,
     });
@@ -71,9 +74,10 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
   return {
     b64,
     model: config.openai.imageModel,
-    size: config.openai.imageSize,
+    size: outputSize,
     quality: config.openai.imageQuality,
     usedBackground,
+    framing: framing || 'default',
   };
 }
 

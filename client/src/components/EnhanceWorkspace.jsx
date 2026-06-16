@@ -3,7 +3,14 @@ import { Wand2 } from 'lucide-react';
 import ImageDropzone from './ImageDropzone.jsx';
 import ResultPanel from './ResultPanel.jsx';
 import LoadingOverlay from './LoadingOverlay.jsx';
+import SegmentedControl from './SegmentedControl.jsx';
 import { useEnhance } from '../hooks/useEnhance.js';
+import {
+  FRAMING_OPTIONS,
+  DEFAULT_FRAMING,
+  FORMAT_OPTIONS,
+  DEFAULT_FORMAT,
+} from '../constants/index.js';
 
 /**
  * The two-column workspace: inputs (vehicle, background, notes) on the left,
@@ -13,6 +20,8 @@ export default function EnhanceWorkspace() {
   const [vehicle, setVehicle] = useState(null);
   const [background, setBackground] = useState(null);
   const [notes, setNotes] = useState('');
+  const [framing, setFraming] = useState(DEFAULT_FRAMING);
+  const [format, setFormat] = useState(DEFAULT_FORMAT);
 
   const { isLoading, uploadPercent, result, error, run, reset } = useEnhance();
 
@@ -27,6 +36,8 @@ export default function EnhanceWorkspace() {
     setVehicle(null);
     setBackground(null);
     setNotes('');
+    setFraming(DEFAULT_FRAMING);
+    setFormat(DEFAULT_FORMAT);
   };
 
   return (
@@ -54,6 +65,22 @@ export default function EnhanceWorkspace() {
               disabled={isLoading}
             />
 
+            <SegmentedControl
+              label="Vehicle size in frame"
+              options={FRAMING_OPTIONS}
+              value={framing}
+              onChange={setFraming}
+              disabled={isLoading}
+            />
+
+            <SegmentedControl
+              label="Output format"
+              options={FORMAT_OPTIONS}
+              value={format}
+              onChange={setFormat}
+              disabled={isLoading}
+            />
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-200">
                 Extra instructions (optional)
@@ -70,7 +97,7 @@ export default function EnhanceWorkspace() {
 
             <button
               className="btn-primary w-full"
-              onClick={() => run({ vehicle, background, notes })}
+              onClick={() => run({ vehicle, background, notes, framing, format })}
               disabled={isLoading || !vehicle}
             >
               <Wand2 className="h-5 w-5" />

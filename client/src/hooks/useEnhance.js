@@ -13,7 +13,7 @@ export function useEnhance() {
   const [result, setResult] = useState(null); // { image, meta }
   const [error, setError] = useState(null);
 
-  const run = useCallback(async ({ vehicle, background, notes }) => {
+  const run = useCallback(async ({ vehicle, background, notes, framing, format }) => {
     if (!vehicle) {
       toast.error('Please add a vehicle photo first.');
       return;
@@ -36,6 +36,8 @@ export function useEnhance() {
         vehicle: vehicleC,
         background: backgroundC,
         notes,
+        framing,
+        format,
         onUploadProgress: setUploadPercent,
       });
       setResult(data);
