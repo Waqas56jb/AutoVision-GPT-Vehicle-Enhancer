@@ -7,6 +7,47 @@ import {
   buildVehicleEnhancementPrompt,
   buildStudioEnhancementPrompt,
 } from '../prompts/vehicleEnhancement.prompt.js';
+import { buildRecolorPrompt } from '../prompts/recolor.prompt.js';
+
+/**
+ * Low-level wrapper around the gpt-image-1 edit endpoint with consistent error
+ * translation. Returns the base64 PNG of the first image.
+ *
+ * @param {object} params
+ * @param {import('openai').Uploadable[]} params.imageFiles
+ * @param {string} params.prompt
+ * @param {string} params.size
+ * @returns {Promise<string>} base64 PNG
+ */
+async function runImageEdit({ imageFiles, prompt, size }) {
+  let response;
+  try {
+    response = await openai.images.edit({
+      model: config.openai.imageModel,
+      image: imageFiles,
+      prompt,
+      size,
+      quality: config.openai.imageQuality,
+      n: 1,
+    });
+  } catch (err) {
+    logger.error('OpenAI image edit failed:', err?.message || err);
+    const status = err?.status;
+    if (status === 401) throw ApiError.upstream('OpenAI authentication failed — check OPENAI_API_KEY.');
+    if (status === 429) throw ApiError.tooManyRequests('OpenAI rate limit / quota exceeded. Try again shortly.');
+    if (status === 400) {
+      throw ApiError.badRequest(
+        'OpenAI rejected the request. The image may be unsupported or the content was blocked.',
+        err?.error?.message
+      );
+    }
+    throw ApiError.upstream('Image provider error.', err?.message);
+  }
+
+  const b64 = response?.data?.[0]?.b64_json;
+  if (!b64) throw ApiError.upstream('OpenAI returned no image data.');
+  return b64;
+}
 
 /**
  * Core AI pipeline. Sends the vehicle (and optional background) image(s) to
@@ -38,38 +79,11 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
   }
 
   logger.info(
-    `Requesting ${config.openai.imageModel} edit ` +
+    `Requesting ${config.openai.imageModel} enhance ` +
       `(size=${outputSize}, quality=${config.openai.imageQuality}, framing=${framing || 'default'}, background=${usedBackground})`
   );
 
-  let response;
-  try {
-    response = await openai.images.edit({
-      model: config.openai.imageModel,
-      image: imageFiles,
-      prompt,
-      size: outputSize,
-      quality: config.openai.imageQuality,
-      n: 1,
-    });
-  } catch (err) {
-    logger.error('OpenAI image edit failed:', err?.message || err);
-    const status = err?.status;
-    if (status === 401) throw ApiError.upstream('OpenAI authentication failed — check OPENAI_API_KEY.');
-    if (status === 429) throw ApiError.tooManyRequests('OpenAI rate limit / quota exceeded. Try again shortly.');
-    if (status === 400) {
-      throw ApiError.badRequest(
-        'OpenAI rejected the request. The image may be unsupported or the content was blocked.',
-        err?.error?.message
-      );
-    }
-    throw ApiError.upstream('Image enhancement provider error.', err?.message);
-  }
-
-  const b64 = response?.data?.[0]?.b64_json;
-  if (!b64) {
-    throw ApiError.upstream('OpenAI returned no image data.');
-  }
+  const b64 = await runImageEdit({ imageFiles, prompt, size: outputSize });
 
   return {
     b64,
@@ -81,4 +95,38 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
   };
 }
 
-export default { enhanceVehicleImage };
+/**
+ * Recolour pipeline. Takes a finished template image and changes ONLY the car's
+ * paint colour, preserving the background, pose, framing, shadows and trim.
+ *
+ * @param {object} params
+ * @param {Buffer} params.vehicleBuffer - normalised template image (PNG)
+ * @param {string} params.colorName     - target colour name, e.g. "Gloss Black"
+ * @param {string} [params.colorHex]    - optional hex hint, e.g. "#0C0C0E"
+ * @param {string} [params.notes]       - optional extra instructions
+ * @param {string} [params.size]        - output size override
+ * @returns {Promise<{ b64: string, model: string, size: string, quality: string, colorName: string, colorHex: string }>}
+ */
+export async function recolorVehicleImage({ vehicleBuffer, colorName, colorHex, notes, size }) {
+  const outputSize = size || config.openai.imageSize;
+  const prompt = buildRecolorPrompt({ colorName, colorHex, notes });
+
+  const imageFiles = [await toFile(vehicleBuffer, 'template.png', { type: 'image/png' })];
+
+  logger.info(
+    `Requesting ${config.openai.imageModel} recolour → ${colorName}${colorHex ? ` (${colorHex})` : ''} (size=${outputSize})`
+  );
+
+  const b64 = await runImageEdit({ imageFiles, prompt, size: outputSize });
+
+  return {
+    b64,
+    model: config.openai.imageModel,
+    size: outputSize,
+    quality: config.openai.imageQuality,
+    colorName,
+    colorHex: colorHex || null,
+  };
+}
+
+export default { enhanceVehicleImage, recolorVehicleImage };

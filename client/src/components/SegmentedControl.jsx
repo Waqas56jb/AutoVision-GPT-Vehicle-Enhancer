@@ -14,7 +14,7 @@ export default function SegmentedControl({ label, options, value, onChange, disa
   return (
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-200">{label}</label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -24,7 +24,7 @@ export default function SegmentedControl({ label, options, value, onChange, disa
               disabled={disabled}
               onClick={() => onChange(opt.value)}
               className={clsx(
-                'flex flex-col items-center rounded-xl border px-2 py-2.5 text-center transition',
+                'flex flex-1 basis-[80px] flex-col items-center rounded-xl border px-2 py-2.5 text-center transition',
                 active
                   ? 'border-brand-500 bg-brand-500/15 text-white shadow-glow'
                   : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25 hover:bg-white/[0.06]',

@@ -1,16 +1,10 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
-import { normaliseInput, describe } from '../services/image.service.js';
+import { normaliseInput, describe, fromBase64, resizeTo } from '../services/image.service.js';
 import { enhanceVehicleImage } from '../services/openai.service.js';
 import { FRAMING_LEVELS, DEFAULT_FRAMING } from '../prompts/vehicleEnhancement.prompt.js';
-
-/** Map a user-friendly output format to a gpt-image-1 supported size. */
-const FORMAT_TO_SIZE = {
-  landscape: '1536x1024', // Carsales, websites, Facebook/Google ads
-  square: '1024x1024', // Instagram, marketplace thumbnails
-  portrait: '1024x1536', // Stories / vertical placements
-};
+import { resolveFormat } from '../config/formats.js';
 
 /**
  * POST /api/enhance
@@ -32,8 +26,7 @@ export const enhance = asyncHandler(async (req, res) => {
 
   // Optional controls (validated, with safe defaults).
   const framing = FRAMING_LEVELS.includes(req.body?.framing) ? req.body.framing : DEFAULT_FRAMING;
-  const format = req.body?.format;
-  const size = format && FORMAT_TO_SIZE[format] ? FORMAT_TO_SIZE[format] : undefined;
+  const { key: format, preset } = resolveFormat(req.body?.format);
 
   const startedAt = Date.now();
 
@@ -48,18 +41,35 @@ export const enhance = asyncHandler(async (req, res) => {
     `Enhance request — vehicle ${meta.width}x${meta.height}, background=${Boolean(backgroundFile)}, framing=${framing}, format=${format || 'default'}`
   );
 
-  const result = await enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, notes, framing, size });
+  const result = await enhanceVehicleImage({
+    vehicleBuffer,
+    backgroundBuffer,
+    notes,
+    framing,
+    size: preset.genSize,
+  });
+
+  // Deliver the platform-exact size when the preset requires it (e.g. Carsales 1280x853).
+  let finalB64 = result.b64;
+  let finalSize = result.size;
+  if (preset.out) {
+    const resized = await resizeTo(fromBase64(result.b64), preset.out.w, preset.out.h);
+    finalB64 = resized.toString('base64');
+    finalSize = `${preset.out.w}x${preset.out.h}`;
+  }
 
   const elapsedMs = Date.now() - startedAt;
-  logger.success(`Enhancement complete in ${elapsedMs}ms`);
+  logger.success(`Enhancement complete in ${elapsedMs}ms (delivered ${finalSize})`);
 
   res.json({
     success: true,
     data: {
-      image: `data:image/png;base64,${result.b64}`,
+      image: `data:image/png;base64,${finalB64}`,
       meta: {
         model: result.model,
-        size: result.size,
+        generatedSize: result.size,
+        size: finalSize,
+        format,
         quality: result.quality,
         usedBackground: result.usedBackground,
         framing: result.framing,

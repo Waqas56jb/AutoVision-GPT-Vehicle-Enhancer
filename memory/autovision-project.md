@@ -23,6 +23,16 @@ framer-motion + react-dropzone + react-compare-slider). OpenAI key lives only in
 `server/.env`. Verified working end-to-end against the real key (1536x1024, high quality,
 ~56s per image).
 
+**Client feedback rounds (key specs):**
+- Vehicle must be the dominant subject filling most of the frame; background < 50%
+  (the car is the product, not the background). Handled via `framing` presets
+  (standard/large/hero) in the prompt module.
+- Shadows must look genuinely photographed in-place, not AI-placed (layered
+  contact + soft cast shadow). Glare/reflections on paint & windscreen must be removed.
+- **Main platform = carsales.com.au, which requires images EXACTLY 1280×853 px.**
+  Pipeline generates at 1536×1024 (same 3:2 aspect) then sharp-resizes to 1280×853.
+  This is the DEFAULT output format. Other formats: landscape/square/portrait.
+
 **Why:** Client values reliability/consistency over one-off outputs and asked how to test
 independently — deliverable should include a test set + quality checklist + feedback loop.
 **How to apply:** Keep the pipeline deterministic; tune the prompt module rather than the

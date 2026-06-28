@@ -46,4 +46,22 @@ export function fromBase64(b64) {
   return Buffer.from(b64, 'base64');
 }
 
-export default { normaliseInput, describe, fromBase64 };
+/**
+ * Resize an image to EXACT target dimensions (cover-crop, centred) and return PNG.
+ * Used to deliver platform-exact sizes (e.g. Carsales requires exactly 1280x853).
+ * The source is generated at the same aspect ratio (1536x1024 = 3:2 ≈ 1280x853),
+ * so the crop is negligible and the car stays correctly framed.
+ *
+ * @param {Buffer} buffer
+ * @param {number} width
+ * @param {number} height
+ * @returns {Promise<Buffer>}
+ */
+export async function resizeTo(buffer, width, height) {
+  return sharp(buffer)
+    .resize({ width, height, fit: 'cover', position: 'centre' })
+    .png()
+    .toBuffer();
+}
+
+export default { normaliseInput, describe, fromBase64, resizeTo };
