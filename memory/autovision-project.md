@@ -40,6 +40,15 @@ framing/shadows) with ONLY the car's paint colour changed. Built as a "Colour Ch
 client colours (White/Black/Blue/Silver/Red) + "More colours" presets + custom colour, batch
 multi-colour with per-variant result cards. Verified end-to-end (1280×853). Pushed to main.
 
+**Phase 3 — client's 6 requirements (via Q&A):** self-service web app (done); saved/preset
+backgrounds selectable, no re-upload (built: `server/backgrounds/` folder auto-listed via
+`/api/backgrounds`, served static, chosen with `backgroundId`); web app not a ChatGPT GPT,
+Mode 2 in same app (clarified honestly); **batch upload 50–100 vehicles** (built:
+MultiImageDropzone + `useEnhanceBatch`, concurrency 2, before/after gallery + download-all);
+full ownership/handover on client's own OpenAI key + hosting (only external dep = OpenAI API,
+pay-per-use); wants a demo/screen-share. Waqas now quoting $15/hr; this recolour/template
+task he floated at $100 but client pushing back.
+
 **Why:** Client values reliability/consistency over one-off outputs and asked how to test
 independently — deliverable should include a test set + quality checklist + feedback loop.
 **How to apply:** Keep the pipeline deterministic; tune the prompt module rather than the

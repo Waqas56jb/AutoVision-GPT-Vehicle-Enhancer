@@ -30,17 +30,28 @@ export const enhance = asyncHandler(async (req, res) => {
   const framing = FRAMING_LEVELS.includes(req.body?.framing) ? req.body.framing : DEFAULT_FRAMING;
   const { key: format, preset } = resolveFormat(req.body?.format);
 
+  // Background source: an uploaded file OR a selected preset (backgroundId).
+  const backgroundId = typeof req.body?.backgroundId === 'string' ? req.body.backgroundId.trim() : '';
+  let backgroundRaw = backgroundFile?.buffer || null;
+  let backgroundSource = backgroundFile ? 'upload' : 'none';
+  if (!backgroundRaw && backgroundId) {
+    const presetPath = resolveBackgroundPath(backgroundId);
+    if (!presetPath) throw ApiError.badRequest(`Selected background not found: ${backgroundId}`);
+    backgroundRaw = await fs.readFile(presetPath);
+    backgroundSource = `preset:${backgroundId}`;
+  }
+
   const startedAt = Date.now();
 
   // Normalise inputs (auto-rotate, downscale, PNG) before sending to the model.
   const [vehicleBuffer, backgroundBuffer] = await Promise.all([
     normaliseInput(vehicleFile.buffer),
-    backgroundFile ? normaliseInput(backgroundFile.buffer) : Promise.resolve(null),
+    backgroundRaw ? normaliseInput(backgroundRaw) : Promise.resolve(null),
   ]);
 
   const meta = await describe(vehicleBuffer);
   logger.info(
-    `Enhance request — vehicle ${meta.width}x${meta.height}, background=${Boolean(backgroundFile)}, framing=${framing}, format=${format || 'default'}`
+    `Enhance request — vehicle ${meta.width}x${meta.height}, background=${backgroundSource}, framing=${framing}, format=${format || 'default'}`
   );
 
   const result = await enhanceVehicleImage({

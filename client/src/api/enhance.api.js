@@ -10,10 +10,11 @@ import apiClient from './client.js';
  * @param {string} [params.notes]
  * @param {(percent:number)=>void} [params.onUploadProgress]
  */
-export async function enhanceImage({ vehicle, background, notes, framing, format, onUploadProgress }) {
+export async function enhanceImage({ vehicle, background, backgroundId, notes, framing, format, onUploadProgress }) {
   const form = new FormData();
   form.append('vehicle', vehicle);
   if (background) form.append('background', background);
+  else if (backgroundId) form.append('backgroundId', backgroundId);
   if (notes) form.append('notes', notes);
   if (framing) form.append('framing', framing);
   if (format) form.append('format', format);

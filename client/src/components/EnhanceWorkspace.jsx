@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
-import { Wand2 } from 'lucide-react';
-import ImageDropzone from './ImageDropzone.jsx';
-import ResultPanel from './ResultPanel.jsx';
-import LoadingOverlay from './LoadingOverlay.jsx';
+import { useState } from 'react';
+import { Wand2, Download, RotateCcw, ImageOff } from 'lucide-react';
+import MultiImageDropzone from './MultiImageDropzone.jsx';
+import BackgroundPicker from './BackgroundPicker.jsx';
 import SegmentedControl from './SegmentedControl.jsx';
-import { useEnhance } from '../hooks/useEnhance.js';
+import ResultCard from './ResultCard.jsx';
+import { useEnhanceBatch } from '../hooks/useEnhanceBatch.js';
+import { downloadDataUrl } from '../utils/download.js';
 import {
   FRAMING_OPTIONS,
   DEFAULT_FRAMING,
@@ -13,56 +14,56 @@ import {
 } from '../constants/index.js';
 
 /**
- * The two-column workspace: inputs (vehicle, background, notes) on the left,
- * the result / before-after comparison on the right.
+ * Background & Enhance mode — supports BATCH: upload one or many vehicle photos,
+ * pick a saved/uploaded background, choose framing + format, and process them
+ * all into dealership-ready images shown in a before/after gallery.
  */
 export default function EnhanceWorkspace() {
-  const [vehicle, setVehicle] = useState(null);
-  const [background, setBackground] = useState(null);
-  const [notes, setNotes] = useState('');
+  const [vehicles, setVehicles] = useState([]);
+  const [bgFile, setBgFile] = useState(null);
+  const [bgId, setBgId] = useState('');
   const [framing, setFraming] = useState(DEFAULT_FRAMING);
   const [format, setFormat] = useState(DEFAULT_FORMAT);
+  const [notes, setNotes] = useState('');
 
-  const { isLoading, uploadPercent, result, error, run, reset } = useEnhance();
+  const { isRunning, results, run, reset } = useEnhanceBatch();
 
-  // Local preview URL of the original vehicle, for the before/after slider.
-  const originalUrl = useMemo(
-    () => (vehicle ? URL.createObjectURL(vehicle) : null),
-    [vehicle]
-  );
+  const doneCount = results.filter((r) => r.status === 'done').length;
 
   const handleReset = () => {
     reset();
-    setVehicle(null);
-    setBackground(null);
-    setNotes('');
+    setVehicles([]);
+    setBgFile(null);
+    setBgId('');
     setFraming(DEFAULT_FRAMING);
     setFormat(DEFAULT_FORMAT);
+    setNotes('');
+  };
+
+  const downloadAll = () => {
+    results
+      .filter((r) => r.status === 'done' && r.image)
+      .forEach((r, i) =>
+        setTimeout(() => downloadDataUrl(r.image, `enhanced-${r.name.replace(/\.[^.]+$/, '')}.png`), i * 250)
+      );
   };
 
   return (
-    <section className="mx-auto mt-10 w-full max-w-6xl px-4">
+    <section className="mx-auto mt-8 w-full max-w-6xl px-4">
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── Inputs ─────────────────────────────────────────── */}
         <div className="card p-5 sm:p-6">
-          <h2 className="mb-5 text-lg font-bold">1 · Your photos</h2>
+          <h2 className="mb-5 text-lg font-bold">1 · Photos &amp; settings</h2>
 
           <div className="space-y-5">
-            <ImageDropzone
-              label="Vehicle photo"
-              hint="Any location, any lighting — JPEG / PNG / WEBP, up to 25 MB"
-              file={vehicle}
-              onChange={setVehicle}
-              required
-              disabled={isLoading}
-            />
+            <MultiImageDropzone files={vehicles} onChange={setVehicles} disabled={isRunning} />
 
-            <ImageDropzone
-              label="Background scene (optional)"
-              hint="Leave empty for a clean studio backdrop"
-              file={background}
-              onChange={setBackground}
-              disabled={isLoading}
+            <BackgroundPicker
+              file={bgFile}
+              onFileChange={setBgFile}
+              selectedId={bgId}
+              onSelectId={setBgId}
+              disabled={isRunning}
             />
 
             <SegmentedControl
@@ -70,7 +71,7 @@ export default function EnhanceWorkspace() {
               options={FRAMING_OPTIONS}
               value={framing}
               onChange={setFraming}
-              disabled={isLoading}
+              disabled={isRunning}
             />
 
             <SegmentedControl
@@ -78,7 +79,7 @@ export default function EnhanceWorkspace() {
               options={FORMAT_OPTIONS}
               value={format}
               onChange={setFormat}
-              disabled={isLoading}
+              disabled={isRunning}
             />
 
             <div>
@@ -88,35 +89,57 @@ export default function EnhanceWorkspace() {
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                disabled={isLoading}
-                rows={3}
-                placeholder="e.g. front 3/4 angle, remove the number plate, slightly warmer tone…"
+                disabled={isRunning}
+                rows={2}
+                placeholder="e.g. remove the number plate, slightly warmer tone…"
                 className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-brand-500"
               />
             </div>
 
             <button
               className="btn-primary w-full"
-              onClick={() => run({ vehicle, background, notes, framing, format })}
-              disabled={isLoading || !vehicle}
+              onClick={() => run({ vehicles, background: bgFile, backgroundId: bgId, framing, format, notes })}
+              disabled={isRunning || vehicles.length === 0}
             >
               <Wand2 className="h-5 w-5" />
-              {isLoading ? 'Enhancing…' : 'Enhance image'}
+              {isRunning
+                ? 'Processing…'
+                : `Enhance ${vehicles.length || ''} image${vehicles.length === 1 ? '' : 's'}`}
             </button>
-
-            {error && (
-              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
-                {error}
-              </p>
-            )}
           </div>
         </div>
 
-        {/* ── Result ─────────────────────────────────────────── */}
-        <div className="card relative p-5 sm:p-6">
-          <h2 className="mb-5 text-lg font-bold">2 · Result</h2>
-          <LoadingOverlay active={isLoading} uploadPercent={uploadPercent} />
-          <ResultPanel originalUrl={originalUrl} result={result} onReset={handleReset} />
+        {/* ── Results ────────────────────────────────────────── */}
+        <div className="card p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-bold">2 · Results</h2>
+            {results.length > 0 && (
+              <div className="flex items-center gap-2">
+                {doneCount > 1 && (
+                  <button onClick={downloadAll} className="btn-ghost px-3 py-1.5 text-xs">
+                    <Download className="h-3.5 w-3.5" /> All ({doneCount})
+                  </button>
+                )}
+                <button onClick={handleReset} className="btn-ghost px-3 py-1.5 text-xs">
+                  <RotateCcw className="h-3.5 w-3.5" /> Reset
+                </button>
+              </div>
+            )}
+          </div>
+
+          {results.length === 0 ? (
+            <div className="flex min-h-[320px] flex-col items-center justify-center text-center text-slate-500">
+              <ImageOff className="mb-3 h-10 w-10 opacity-40" />
+              <p className="font-medium text-slate-400">Your enhanced images will appear here</p>
+              <p className="mt-1 text-sm">Add photos, choose a background, then Enhance.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {results.map((item) => (
+                <ResultCard key={item.key} item={item} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

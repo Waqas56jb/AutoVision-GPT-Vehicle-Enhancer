@@ -13,6 +13,11 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Preset background thumbnails served statically by the backend.
+      '/backgrounds': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 });
