@@ -8,6 +8,7 @@ import {
   deleteBackground,
 } from '../api/backgrounds.api.js';
 import { assetUrl } from '../api/client.js';
+import { compressImage } from '../utils/compressImage.js';
 
 /**
  * Full background library manager:
@@ -42,9 +43,16 @@ export default function BackgroundManager({ value, onChange, disabled }) {
     setUploading(true);
     try {
       // Upload sequentially so the library stays ordered and errors are clear.
+      // Compress first so large phone photos upload reliably.
       let lastId = null;
       for (const f of files) {
-        const bg = await uploadBackground(f);
+        let toSend = f;
+        try {
+          toSend = await compressImage(f);
+        } catch {
+          toSend = f;
+        }
+        const bg = await uploadBackground(toSend);
         lastId = bg.id;
       }
       await load();
