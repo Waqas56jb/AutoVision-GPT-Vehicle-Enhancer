@@ -70,9 +70,11 @@ export default function ColorPicker({ value, onChange, disabled }) {
     <div>
       <div className="mb-2 flex items-center justify-between">
         <label className="text-sm font-semibold text-slate-200">
-          Target colours <span className="text-brand-400">*</span>
+          Change paint colour <span className="font-normal text-slate-500">(optional)</span>
         </label>
-        <span className="text-xs text-slate-500">{value.length} selected</span>
+        <span className="text-xs text-slate-500">
+          {value.length ? `${value.length} selected` : 'keep original colour'}
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-2">

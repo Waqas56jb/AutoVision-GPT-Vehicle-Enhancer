@@ -107,13 +107,65 @@ COMPOSITION & OUTPUT (the CAR is the product — the background only sets the sc
 }
 
 /**
+ * Optional paint-colour-change clause, appended when a target colour is chosen.
+ * @param {string} [colorName]
+ * @param {string} [colorHex]
+ */
+export function recolorClause(colorName, colorHex) {
+  if (!colorName) return '';
+  return `
+PAINT COLOUR CHANGE (also apply):
+- Change the car's body paint colour to ${colorName}${colorHex ? ` (approximately ${colorHex})` : ''}.
+- Apply it ONLY to the painted body panels (bonnet, doors, roof, guards, boot, painted
+  bumpers). Do NOT tint the wheels, tyres, glass, lights, grille, badges, plate or trim.
+- Re-render highlights and reflections in the new colour following the same light
+  direction; keep it photoreal automotive paint (correct gloss, not a flat fill).`.trim();
+}
+
+/**
+ * Prompt for KEEPING the original background — enhance (and optionally recolour)
+ * without replacing the scene. Used for the "Keep original" background mode.
+ * @param {object} [opts]
+ */
+export function buildKeepBackgroundPrompt(opts = {}) {
+  const { notes, colorName, colorHex } = opts;
+  const clause = recolorClause(colorName, colorHex);
+  const base = `
+You are an expert automotive retoucher enhancing a dealership photo while KEEPING its
+original background.
+
+TASK: Reproduce the SAME scene — same background, camera angle, vehicle position, pose and
+framing. Do NOT replace, move or regenerate the background. Improve the image to clean,
+photorealistic dealership advertising quality.
+
+${FIDELITY_RULES}
+
+ENHANCE (without changing the scene):
+- Reduce harsh sun glare, blown-out hotspots and mirror-like reflections on the paintwork,
+  bonnet, roof and windscreen, keeping natural gloss.
+- Remove dirt, dust, watermarks, timestamps and overlaid text.
+- Clean and sharpen the overall image; correct white balance and contrast.
+- Strengthen the existing ground/contact shadow so it looks natural and believable, in the
+  same direction as the scene's light.
+${clause ? `\n${clause}\n` : ''}
+OUTPUT: the same scene and framing, enhanced${colorName ? ` and recoloured to ${colorName}` : ''}, dealership-ready.
+`.trim();
+
+  const dealerNotes = notes && notes.trim()
+    ? `\n\nADDITIONAL INSTRUCTIONS (apply without breaking the rules above):\n${notes.trim()}`
+    : '';
+  return `${base}${dealerNotes}`;
+}
+
+/**
  * Build the full enhancement prompt.
  * @param {object} [opts]
  * @param {string} [opts.notes] - Optional dealer instructions appended to the brief.
  * @returns {string}
  */
 export function buildVehicleEnhancementPrompt(opts = {}) {
-  const { notes, framing = DEFAULT_FRAMING } = opts;
+  const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
+  const clause = recolorClause(colorName, colorHex);
 
   const base = `
 You are an expert automotive retoucher and compositor producing dealership-grade
@@ -131,6 +183,7 @@ ${CLEANUP_RULES}
 ${INTEGRATION_RULES}
 
 ${composition(framing)}
+${clause ? `\n${clause}\n` : ''}
 `.trim();
 
   const dealerNotes = notes && notes.trim()
@@ -145,7 +198,8 @@ ${composition(framing)}
  * instead place the vehicle on a clean, neutral studio-style backdrop.
  */
 export function buildStudioEnhancementPrompt(opts = {}) {
-  const { notes, framing = DEFAULT_FRAMING } = opts;
+  const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
+  const clause = recolorClause(colorName, colorHex);
   const base = `
 You are an expert automotive retoucher producing dealership-grade marketing photography.
 
@@ -163,6 +217,7 @@ STUDIO INTEGRATION:
 - No props, no text, no other objects — only the hero vehicle on the backdrop.
 
 ${composition(framing)}
+${clause ? `\n${clause}\n` : ''}
 `.trim();
 
   const dealerNotes = notes && notes.trim()

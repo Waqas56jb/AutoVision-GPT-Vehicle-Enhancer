@@ -6,6 +6,7 @@ import ApiError from '../utils/ApiError.js';
 import {
   buildVehicleEnhancementPrompt,
   buildStudioEnhancementPrompt,
+  buildKeepBackgroundPrompt,
 } from '../prompts/vehicleEnhancement.prompt.js';
 import { buildRecolorPrompt } from '../prompts/recolor.prompt.js';
 
@@ -57,30 +58,43 @@ async function runImageEdit({ imageFiles, prompt, size }) {
  * @param {object} params
  * @param {Buffer} params.vehicleBuffer   - normalised vehicle image (PNG)
  * @param {Buffer|null} params.backgroundBuffer - normalised background image (PNG) or null
+ * @param {'replace'|'studio'|'keep'} [params.mode] - background handling mode
  * @param {string} [params.notes]         - optional dealer instructions
  * @param {string} [params.framing]       - 'standard' | 'large' | 'hero'
+ * @param {string} [params.colorName]     - optional target paint colour
+ * @param {string} [params.colorHex]      - optional hex hint
  * @param {string} [params.size]          - output size override (e.g. '1536x1024')
- * @returns {Promise<{ b64: string, model: string, size: string, quality: string, usedBackground: boolean, framing: string }>}
+ * @returns {Promise<object>}
  */
-export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, notes, framing, size }) {
+export async function enhanceVehicleImage({
+  vehicleBuffer,
+  backgroundBuffer,
+  mode,
+  notes,
+  framing,
+  colorName,
+  colorHex,
+  size,
+}) {
   const usedBackground = Boolean(backgroundBuffer);
   const outputSize = size || config.openai.imageSize;
+  // Resolve the effective mode: a supplied background always means "replace".
+  const effectiveMode = usedBackground ? 'replace' : mode === 'keep' ? 'keep' : 'studio';
 
-  const prompt = usedBackground
-    ? buildVehicleEnhancementPrompt({ notes, framing })
-    : buildStudioEnhancementPrompt({ notes, framing });
+  let prompt;
+  if (effectiveMode === 'replace') prompt = buildVehicleEnhancementPrompt({ notes, framing, colorName, colorHex });
+  else if (effectiveMode === 'keep') prompt = buildKeepBackgroundPrompt({ notes, colorName, colorHex });
+  else prompt = buildStudioEnhancementPrompt({ notes, framing, colorName, colorHex });
 
   // Order matters: [0] vehicle, [1] background (the prompt references this order).
-  const imageFiles = [
-    await toFile(vehicleBuffer, 'vehicle.png', { type: 'image/png' }),
-  ];
+  const imageFiles = [await toFile(vehicleBuffer, 'vehicle.png', { type: 'image/png' })];
   if (usedBackground) {
     imageFiles.push(await toFile(backgroundBuffer, 'background.png', { type: 'image/png' }));
   }
 
   logger.info(
     `Requesting ${config.openai.imageModel} enhance ` +
-      `(size=${outputSize}, quality=${config.openai.imageQuality}, framing=${framing || 'default'}, background=${usedBackground})`
+      `(size=${outputSize}, quality=${config.openai.imageQuality}, mode=${effectiveMode}, framing=${framing || 'default'}, colour=${colorName || 'none'})`
   );
 
   const b64 = await runImageEdit({ imageFiles, prompt, size: outputSize });
@@ -91,7 +105,10 @@ export async function enhanceVehicleImage({ vehicleBuffer, backgroundBuffer, not
     size: outputSize,
     quality: config.openai.imageQuality,
     usedBackground,
+    mode: effectiveMode,
     framing: framing || 'default',
+    colorName: colorName || null,
+    colorHex: colorHex || null,
   };
 }
 

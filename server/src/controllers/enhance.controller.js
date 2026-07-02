@@ -30,10 +30,17 @@ export const enhance = asyncHandler(async (req, res) => {
   const framing = FRAMING_LEVELS.includes(req.body?.framing) ? req.body.framing : DEFAULT_FRAMING;
   const { key: format, preset } = resolveFormat(req.body?.format);
 
-  // Background source: an uploaded file OR a selected preset (backgroundId).
+  // Optional paint colour change.
+  const colorName = typeof req.body?.colorName === 'string' ? req.body.colorName.trim() : '';
+  let colorHex = typeof req.body?.colorHex === 'string' ? req.body.colorHex.trim() : '';
+  if (colorHex && !/^#?[0-9a-fA-F]{6}$/.test(colorHex)) colorHex = '';
+  if (colorHex && !colorHex.startsWith('#')) colorHex = `#${colorHex}`;
+
+  // Background handling: 'keep' | 'studio' | 'replace'. A provided file/preset ⇒ replace.
+  const backgroundModeReq = req.body?.backgroundMode === 'keep' ? 'keep' : 'studio';
   const backgroundId = typeof req.body?.backgroundId === 'string' ? req.body.backgroundId.trim() : '';
   let backgroundRaw = backgroundFile?.buffer || null;
-  let backgroundSource = backgroundFile ? 'upload' : 'none';
+  let backgroundSource = backgroundFile ? 'upload' : backgroundModeReq;
   if (!backgroundRaw && backgroundId) {
     const presetPath = resolveBackgroundPath(backgroundId);
     if (!presetPath) throw ApiError.badRequest(`Selected background not found: ${backgroundId}`);
@@ -51,14 +58,17 @@ export const enhance = asyncHandler(async (req, res) => {
 
   const meta = await describe(vehicleBuffer);
   logger.info(
-    `Enhance request — vehicle ${meta.width}x${meta.height}, background=${backgroundSource}, framing=${framing}, format=${format || 'default'}`
+    `Enhance request — vehicle ${meta.width}x${meta.height}, background=${backgroundSource}, framing=${framing}, colour=${colorName || 'none'}, format=${format || 'default'}`
   );
 
   const result = await enhanceVehicleImage({
     vehicleBuffer,
     backgroundBuffer,
+    mode: backgroundModeReq,
     notes,
     framing,
+    colorName,
+    colorHex,
     size: preset.genSize,
   });
 
@@ -85,7 +95,10 @@ export const enhance = asyncHandler(async (req, res) => {
         format,
         quality: result.quality,
         usedBackground: result.usedBackground,
+        mode: result.mode,
         framing: result.framing,
+        colorName: result.colorName,
+        colorHex: result.colorHex,
         elapsedMs,
       },
     },

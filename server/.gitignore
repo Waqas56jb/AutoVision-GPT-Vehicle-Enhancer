@@ -1,6 +1,14 @@
 node_modules/
 .env
 .env.local
+
+# Backgrounds: keep the shipped starters + README, ignore user-uploaded ones
+backgrounds/*
+!backgrounds/README.md
+!backgrounds/studio-light-grey.png
+!backgrounds/studio-charcoal.png
+!backgrounds/warm-showroom.png
+!backgrounds/outdoor-blue-sky.png
 uploads/*
 !uploads/.gitkeep
 outputs/*

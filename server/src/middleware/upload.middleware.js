@@ -30,4 +30,7 @@ export const uploadVehicleAndBackground = multerInstance.fields([
   { name: 'background', maxCount: 1 },
 ]);
 
+/** Single-file uploader for saving a background into the library. */
+export const uploadSingleBackground = multerInstance.single('background');
+
 export default uploadVehicleAndBackground;
