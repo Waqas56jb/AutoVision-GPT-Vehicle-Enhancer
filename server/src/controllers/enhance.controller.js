@@ -1,8 +1,10 @@
+import fs from 'node:fs/promises';
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
 import { normaliseInput, describe, fromBase64, resizeTo } from '../services/image.service.js';
 import { enhanceVehicleImage } from '../services/openai.service.js';
+import { resolveBackgroundPath } from '../services/backgrounds.service.js';
 import { FRAMING_LEVELS, DEFAULT_FRAMING } from '../prompts/vehicleEnhancement.prompt.js';
 import { resolveFormat } from '../config/formats.js';
 

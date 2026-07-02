@@ -33,6 +33,13 @@ framer-motion + react-dropzone + react-compare-slider). OpenAI key lives only in
   Pipeline generates at 1536×1024 (same 3:2 aspect) then sharp-resizes to 1280×853.
   This is the DEFAULT output format. Other formats: landscape/square/portrait.
 
+**Phase 2 — Colour Change ($10 AUD):** Client wants a "template" mode: given ONE finished
+advert image (e.g. white MG4 1280×853), produce the same image (same pose/background/
+framing/shadows) with ONLY the car's paint colour changed. Built as a "Colour Change" mode:
+`/api/recolor` + `recolor.prompt.js` (preservation-biased), frontend ColorPicker with the 5
+client colours (White/Black/Blue/Silver/Red) + "More colours" presets + custom colour, batch
+multi-colour with per-variant result cards. Verified end-to-end (1280×853). Pushed to main.
+
 **Why:** Client values reliability/consistency over one-off outputs and asked how to test
 independently — deliverable should include a test set + quality checklist + feedback loop.
 **How to apply:** Keep the pipeline deterministic; tune the prompt module rather than the

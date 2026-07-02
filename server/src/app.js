@@ -6,6 +6,7 @@ import morgan from 'morgan';
 
 import config from './config/env.js';
 import apiRoutes from './routes/index.js';
+import { BACKGROUNDS_DIR } from './services/backgrounds.service.js';
 import { notFound, errorHandler } from './middleware/error.middleware.js';
 
 /**
@@ -39,6 +40,9 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true }));
 
   if (!config.isProd) app.use(morgan('dev'));
+
+  // Serve preset background thumbnails/files statically.
+  app.use('/backgrounds', express.static(BACKGROUNDS_DIR, { maxAge: '1h' }));
 
   // API
   app.use('/api', apiRoutes);
