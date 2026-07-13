@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
 /**
@@ -13,7 +14,7 @@ import clsx from 'clsx';
 export default function SegmentedControl({ label, options, value, onChange, disabled }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-200">{label}</label>
+      <label className="label mb-2.5 block">{label}</label>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
           const active = opt.value === value;
@@ -24,15 +25,32 @@ export default function SegmentedControl({ label, options, value, onChange, disa
               disabled={disabled}
               onClick={() => onChange(opt.value)}
               className={clsx(
-                'flex flex-1 basis-[80px] flex-col items-center rounded-xl border px-2 py-2.5 text-center transition',
+                'relative flex flex-1 basis-[90px] flex-col items-center rounded-2xl border px-2 py-2.5 text-center transition duration-200',
                 active
-                  ? 'border-brand-500 bg-brand-500/15 text-white shadow-glow'
-                  : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25 hover:bg-white/[0.06]',
+                  ? 'border-brand-500 text-brand-800 shadow-glow'
+                  : 'border-brand-100 bg-white/80 text-slate-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60',
                 disabled && 'cursor-not-allowed opacity-60'
               )}
             >
+              {/* The selected pill slides between options instead of blinking. */}
+              {active && (
+                <motion.span
+                  layoutId={`segment-${label}`}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  className="absolute inset-0 -z-10 rounded-2xl bg-brand-50"
+                />
+              )}
               <span className="text-sm font-semibold">{opt.label}</span>
-              {opt.hint && <span className="mt-0.5 text-[11px] text-slate-400">{opt.hint}</span>}
+              {opt.hint && (
+                <span
+                  className={clsx(
+                    'mt-0.5 text-[11px]',
+                    active ? 'text-brand-600' : 'text-slate-400'
+                  )}
+                >
+                  {opt.hint}
+                </span>
+              )}
             </button>
           );
         })}

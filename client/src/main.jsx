@@ -11,10 +11,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       position="bottom-center"
       toastOptions={{
         style: {
-          background: '#0f172a',
-          color: '#e2e8f0',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.92)',
+          color: '#1e293b',
+          border: '1px solid #dbeafe',
+          borderRadius: '14px',
+          boxShadow: '0 20px 45px -25px rgba(30,58,138,0.45)',
+          backdropFilter: 'blur(12px)',
+          fontWeight: 500,
+          fontSize: '14px',
         },
+        success: { iconTheme: { primary: '#2563eb', secondary: '#fff' } },
+        loading: { iconTheme: { primary: '#3b82f6', secondary: '#dbeafe' } },
       }}
     />
   </React.StrictMode>

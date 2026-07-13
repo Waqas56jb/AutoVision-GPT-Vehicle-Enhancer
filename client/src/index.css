@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -15,31 +15,116 @@ body,
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 font-sans antialiased;
-  background-image: radial-gradient(60% 50% at 50% 0%, rgba(14, 165, 233, 0.12), transparent 70%),
-    radial-gradient(40% 40% at 90% 10%, rgba(56, 189, 248, 0.08), transparent 70%);
-  background-attachment: fixed;
+  @apply bg-canvas font-sans text-slate-700 antialiased;
 }
 
-/* Reusable component classes */
 @layer components {
-  .card {
-    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm shadow-xl;
+  /* ── Workbench panes ──────────────────────────────────── */
+
+  /* The tool rail: deep navy, the one dark surface in the app. */
+  .rail {
+    @apply bg-rail-gradient text-white/70;
   }
+  .rail-btn {
+    @apply relative grid h-11 w-11 place-items-center rounded-xl transition duration-200
+           hover:bg-white/10 hover:text-white;
+  }
+  .rail-btn-active {
+    @apply bg-white text-brand-700 shadow-glow hover:bg-white hover:text-brand-700;
+  }
+
+  /* Side panels flanking the stage. */
+  .pane {
+    @apply border-brand-100/80 bg-white;
+  }
+
+  /* The stage itself — a recessed blue well so the artwork pops off it. */
+  .stage {
+    @apply bg-canvas-soft;
+    background-image: radial-gradient(60% 60% at 50% 0%, rgba(59, 130, 246, 0.1), transparent 70%),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent 40%);
+  }
+
+  /* ── Type ─────────────────────────────────────────────── */
+  .micro {
+    @apply text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400;
+  }
+  .label {
+    @apply text-sm font-semibold text-slate-800;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 font-semibold
-           text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl
+           bg-brand-gradient px-5 py-2.5 text-sm font-bold text-white shadow-glow
+           transition duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand-500 active:translate-y-0
+           disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5
-           px-4 py-2.5 font-medium text-slate-200 transition hover:bg-white/10;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white
+           px-3.5 py-2 text-sm font-semibold text-slate-600 transition
+           hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* ── Form fields ──────────────────────────────────────── */
+  .field {
+    @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-slate-700
+           outline-none transition placeholder:text-slate-400
+           focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+  }
+
+  /* Selectable tile — shared by backgrounds, colours and segments. */
+  .tile {
+    @apply rounded-xl border bg-white transition duration-200;
+  }
+  .tile-idle {
+    @apply border-brand-100 text-slate-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 hover:shadow-soft;
+  }
+  .tile-active {
+    @apply border-brand-500 bg-brand-50 text-brand-800 shadow-glow ring-1 ring-brand-500;
+  }
+
+  /* Skeleton block with a light sweep — every loading placeholder uses this. */
+  .skeleton {
+    @apply relative overflow-hidden bg-brand-50;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 animate-shimmer bg-sheen;
   }
 }
 
+/* Slim blue scrollbars — the panes scroll independently, so these are visible a lot. */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-white/15;
+  @apply rounded-full border-2 border-solid border-transparent bg-brand-200 bg-clip-content;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-brand-300 bg-clip-content;
+}
+.rail ::-webkit-scrollbar-thumb {
+  @apply bg-white/20 bg-clip-content;
+}
+
+::selection {
+  @apply bg-brand-500/20 text-brand-900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

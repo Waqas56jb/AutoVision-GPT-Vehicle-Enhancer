@@ -42,6 +42,11 @@ export const config = {
     imageModel: optional('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
     imageSize: optional('OPENAI_IMAGE_SIZE', '1536x1024'),
     imageQuality: optional('OPENAI_IMAGE_QUALITY', 'high'),
+    // Absorb OpenAI's 429s inside the SDK (exponential backoff) instead of
+    // failing the image — expected behaviour once a batch runs wide.
+    maxRetries: Number(optional('OPENAI_MAX_RETRIES', '5')),
+    // A single high-quality edit runs ~60s; leave generous headroom.
+    timeoutMs: Number(optional('OPENAI_TIMEOUT_MS', '180000')),
   },
 
   upload: {
@@ -51,7 +56,11 @@ export const config = {
 
   rateLimit: {
     windowMs: Number(optional('RATE_LIMIT_WINDOW_MIN', '15')) * 60 * 1000,
-    max: Number(optional('RATE_LIMIT_MAX', '60')),
+    // Per IP. A batch is one HTTP request PER IMAGE from a single dealer, so a
+    // 100-vehicle run is 100+ requests from one address — the old ceiling of 60
+    // rejected a big batch halfway through with our own 429. Keep this
+    // comfortably above the largest batch you expect to run in one window.
+    max: Number(optional('RATE_LIMIT_MAX', '600')),
   },
 };
 

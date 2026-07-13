@@ -9,6 +9,26 @@ export const ACCEPTED_IMAGE_TYPES = {
 
 export const MAX_FILE_MB = 25;
 
+/**
+ * How many images to render at the same time.
+ *
+ * The wall-clock time for a batch is roughly `ceil(jobs / CONCURRENCY) × ~60s`,
+ * so this is the single biggest lever on how long a batch takes. The real
+ * ceiling is NOT this app — it is your OpenAI account's images-per-minute limit
+ * for gpt-image-1 (see platform.openai.com → Settings → Limits). Set this at or
+ * just below that limit: too high and every extra request comes straight back
+ * as a 429.
+ *
+ * Override per-environment with VITE_BATCH_CONCURRENCY.
+ */
+export const BATCH_CONCURRENCY = Math.max(
+  1,
+  Number(import.meta.env.VITE_BATCH_CONCURRENCY) || 6
+);
+
+/** A 429 means we are pushing harder than the account allows — retry, don't fail. */
+export const MAX_ATTEMPTS = 4;
+
 /** How much of the frame the vehicle should fill (sent to the backend). */
 export const FRAMING_OPTIONS = [
   { value: 'standard', label: 'Standard', hint: 'Car ~75% of frame' },

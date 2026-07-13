@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Check, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, Plus, ChevronDown, X } from 'lucide-react';
 import clsx from 'clsx';
 import { PRIMARY_COLORS, MORE_COLORS } from '../constants/index.js';
 
@@ -44,21 +45,26 @@ export default function ColorPicker({ value, onChange, disabled }) {
         onClick={() => toggle(color)}
         title={color.name}
         className={clsx(
-          'group flex items-center gap-2 rounded-xl border px-3 py-2 transition',
-          selected
-            ? 'border-brand-500 bg-brand-500/15 text-white'
-            : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25',
+          'tile flex items-center gap-2.5 px-3 py-2',
+          selected ? 'tile-active' : 'tile-idle',
           disabled && 'cursor-not-allowed opacity-60'
         )}
       >
         <span
-          className="relative h-6 w-6 shrink-0 rounded-full border border-white/30 shadow-inner"
+          className="relative grid h-6 w-6 shrink-0 place-items-center rounded-full shadow-inner ring-1 ring-inset ring-black/10"
           style={{ backgroundColor: color.hex }}
         >
           {selected && (
-            <span className="absolute inset-0 flex items-center justify-center">
-              <Check className="h-3.5 w-3.5 text-white drop-shadow" />
-            </span>
+            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
+              <Check
+                className={clsx(
+                  'h-3.5 w-3.5 drop-shadow',
+                  /* Tick has to survive on a white swatch as well as a black one. */
+                  isLight(color.hex) ? 'text-slate-900' : 'text-white'
+                )}
+                strokeWidth={3}
+              />
+            </motion.span>
           )}
         </span>
         <span className="text-sm font-medium">{color.name}</span>
@@ -68,11 +74,16 @@ export default function ColorPicker({ value, onChange, disabled }) {
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <label className="text-sm font-semibold text-slate-200">
-          Change paint colour <span className="font-normal text-slate-500">(optional)</span>
+      <div className="mb-2.5 flex items-center justify-between">
+        <label className="label">
+          Change paint colour <span className="font-normal text-slate-400">(optional)</span>
         </label>
-        <span className="text-xs text-slate-500">
+        <span
+          className={clsx(
+            'rounded-full px-2.5 py-1 text-xs font-medium transition',
+            value.length ? 'bg-brand-50 text-brand-700' : 'text-slate-400'
+          )}
+        >
           {value.length ? `${value.length} selected` : 'keep original colour'}
         </span>
       </div>
@@ -87,66 +98,96 @@ export default function ColorPicker({ value, onChange, disabled }) {
         type="button"
         onClick={() => setShowMore((s) => !s)}
         disabled={disabled}
-        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-400 transition hover:text-brand-500"
+        className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 transition hover:text-brand-800"
       >
-        {showMore ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        <ChevronDown
+          className={clsx('h-4 w-4 transition-transform duration-300', showMore && 'rotate-180')}
+        />
         More colours
       </button>
 
-      {showMore && (
-        <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-          <div className="flex flex-wrap gap-2">
-            {MORE_COLORS.map((c) => (
-              <Swatch key={c.key} color={c} />
-            ))}
-          </div>
+      <AnimatePresence initial={false}>
+        {showMore && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="panel mt-3 space-y-3 p-3.5">
+              <div className="flex flex-wrap gap-2">
+                {MORE_COLORS.map((c) => (
+                  <Swatch key={c.key} color={c} />
+                ))}
+              </div>
 
-          {/* Custom colour */}
-          <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
-            <input
-              type="color"
-              value={customHex}
-              disabled={disabled}
-              onChange={(e) => setCustomHex(e.target.value)}
-              className="h-9 w-12 cursor-pointer rounded-md border border-white/15 bg-transparent"
-              title="Pick a custom colour"
-            />
-            <input
-              type="text"
-              value={customName}
-              disabled={disabled}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder="Custom colour name (e.g. Midnight Purple)"
-              className="min-w-[180px] flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-brand-500"
-            />
-            <button type="button" onClick={addCustom} disabled={disabled} className="btn-ghost">
-              <Plus className="h-4 w-4" /> Add
-            </button>
-          </div>
-        </div>
-      )}
+              {/* Custom colour */}
+              <div className="flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3">
+                <input
+                  type="color"
+                  value={customHex}
+                  disabled={disabled}
+                  onChange={(e) => setCustomHex(e.target.value)}
+                  className="h-10 w-12 cursor-pointer rounded-xl border border-brand-100 bg-white p-1 shadow-soft"
+                  title="Pick a custom colour"
+                />
+                <input
+                  type="text"
+                  value={customName}
+                  disabled={disabled}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+                  placeholder="Custom colour name (e.g. Midnight Purple)"
+                  className="field min-w-[180px] flex-1 py-2.5"
+                />
+                <button type="button" onClick={addCustom} disabled={disabled} className="btn-ghost">
+                  <Plus className="h-4 w-4" /> Add
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Selected chips (so custom + hidden presets stay visible) */}
       {value.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {value.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(value.filter((v) => v.key !== c.key))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-white/10"
-              title="Remove"
-            >
-              <span
-                className="h-3 w-3 rounded-full border border-white/30"
-                style={{ backgroundColor: c.hex }}
-              />
-              {c.name} ✕
-            </button>
-          ))}
+          <AnimatePresence mode="popLayout">
+            {value.map((c) => (
+              <motion.button
+                key={c.key}
+                layout
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange(value.filter((v) => v.key !== c.key))}
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-soft transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                title="Remove"
+              >
+                <span
+                  className="h-3 w-3 rounded-full ring-1 ring-inset ring-black/10"
+                  style={{ backgroundColor: c.hex }}
+                />
+                {c.name}
+                <X className="h-3 w-3" />
+              </motion.button>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>
   );
+}
+
+/** Relative luminance test, so the tick stays legible on pale swatches. */
+function isLight(hex) {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
 }
