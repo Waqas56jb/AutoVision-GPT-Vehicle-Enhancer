@@ -5,6 +5,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 
 import config from './config/env.js';
+import logger from './utils/logger.js';
 import apiRoutes from './routes/index.js';
 import { BACKGROUNDS_DIR } from './services/backgrounds.service.js';
 import { notFound, errorHandler } from './middleware/error.middleware.js';
@@ -28,9 +29,19 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, cb) => {
-        // Allow same-origin / curl (no origin) and whitelisted client origins.
-        if (!origin || config.clientOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error(`CORS: origin not allowed: ${origin}`));
+        // No Origin header = same-origin, curl, or a server-to-server call.
+        if (!origin) return cb(null, true);
+        if (config.clientOrigins.some((o) => o.regex.test(origin))) return cb(null, true);
+
+        /* Hand back `false`, never an Error. An Error here propagates to the
+           error handler and answers 500 — which reads as "the backend is
+           broken" when the truth is "this origin is not on the list". The
+           browser still blocks the response; it just does so cleanly. */
+        logger.warn(
+          `CORS: blocked origin ${origin} — add it to CLIENT_ORIGIN ` +
+            `(currently: ${config.clientOrigins.map((o) => o.pattern).join(', ')})`
+        );
+        return cb(null, false);
       },
     })
   );
