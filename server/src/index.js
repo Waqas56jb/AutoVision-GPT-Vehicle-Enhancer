@@ -12,7 +12,7 @@ function start() {
   const server = app.listen(config.port, () => {
     logger.success(`AutoVision API listening on http://localhost:${config.port} [${config.env}]`);
     logger.info(`Image model: ${config.openai.imageModel} | size: ${config.openai.imageSize} | quality: ${config.openai.imageQuality}`);
-    logger.info(`Allowed client origins: ${config.clientOrigins.join(', ')}`);
+    logger.info(`CORS: public (any origin) | rate limit: ${config.rateLimit.max} req / ${config.rateLimit.windowMs / 60000} min per IP`);
   });
 
   const shutdown = (signal) => {
