@@ -5,7 +5,6 @@ import compression from 'compression';
 import morgan from 'morgan';
 
 import config from './config/env.js';
-import logger from './utils/logger.js';
 import apiRoutes from './routes/index.js';
 import { BACKGROUNDS_DIR } from './services/backgrounds.service.js';
 import { notFound, errorHandler } from './middleware/error.middleware.js';
@@ -26,25 +25,25 @@ export function createApp() {
   // Security headers. crossOriginResourcePolicy relaxed so image data URLs work cross-origin.
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-  app.use(
-    cors({
-      origin: (origin, cb) => {
-        // No Origin header = same-origin, curl, or a server-to-server call.
-        if (!origin) return cb(null, true);
-        if (config.clientOrigins.some((o) => o.regex.test(origin))) return cb(null, true);
-
-        /* Hand back `false`, never an Error. An Error here propagates to the
-           error handler and answers 500 — which reads as "the backend is
-           broken" when the truth is "this origin is not on the list". The
-           browser still blocks the response; it just does so cleanly. */
-        logger.warn(
-          `CORS: blocked origin ${origin} — add it to CLIENT_ORIGIN ` +
-            `(currently: ${config.clientOrigins.map((o) => o.pattern).join(', ')})`
-        );
-        return cb(null, false);
-      },
-    })
-  );
+  /**
+   * Public CORS: any origin may call this API from a browser.
+   *
+   * This means the frontend needs zero backend configuration — deploy it
+   * anywhere (Vercel production, a preview URL, a custom domain, localhost) and
+   * it just works, with no CLIENT_ORIGIN to keep in sync.
+   *
+   * The trade-off is deliberate: an open origin lets any web page spend this
+   * account's OpenAI credits from a visitor's browser. Note that CORS was never
+   * really the defence here — it only restricts *browsers*, and anyone could
+   * always curl these endpoints directly. The controls that actually matter are
+   * the per-IP rate limiter on /api/enhance and /api/recolor, and the upload
+   * size cap. If this ever needs locking down, add an API key rather than
+   * reinstating an origin allow-list.
+   *
+   * `credentials` stays off — a wildcard origin and cookies cannot coexist, and
+   * this API is stateless anyway.
+   */
+  app.use(cors({ origin: '*', credentials: false }));
 
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));

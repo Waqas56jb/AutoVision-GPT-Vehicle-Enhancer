@@ -32,23 +32,8 @@ export const config = {
   isProd: optional('NODE_ENV', 'development') === 'production',
   port: Number(optional('PORT', '5000')),
 
-  /**
-   * Allowed browser origins, comma-separated. Entries may contain `*` as a
-   * wildcard, which matters because Vercel mints a fresh hostname for every
-   * preview deployment — pinning one exact URL breaks every preview:
-   *   CLIENT_ORIGIN=https://my-app.vercel.app,https://my-app-*.vercel.app
-   */
-  clientOrigins: optional('CLIENT_ORIGIN', 'http://localhost:5173')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean)
-    .map((pattern) => ({
-      pattern,
-      // Escape everything, then turn the escaped \* back into a wildcard.
-      regex: new RegExp(
-        `^${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*')}$`
-      ),
-    })),
+  /* CORS is public (see app.js) — there is deliberately no origin allow-list,
+     so the frontend can be deployed anywhere with no backend config. */
 
   openai: {
     apiKey: required('OPENAI_API_KEY'),
