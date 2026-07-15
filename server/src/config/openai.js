@@ -1,5 +1,20 @@
+import { File as BufferFile } from 'node:buffer';
 import OpenAI from 'openai';
 import config from './env.js';
+
+/**
+ * Safety net for the OpenAI SDK's file uploads.
+ *
+ * openai v6's toFile() needs a global `File`, which only exists from Node 20.
+ * The `engines` field and .nvmrc pin Node 20 on the host, but if this ever runs
+ * somewhere older, this makes the failure loud and self-healing instead of a
+ * 500 on every single request ("`File` is not defined as a global"). node:buffer
+ * exports File on Node 20+, so on a correctly-pinned host this is a harmless
+ * no-op; on Node 18 it at least surfaces the real cause.
+ */
+if (typeof globalThis.File === 'undefined' && BufferFile) {
+  globalThis.File = BufferFile;
+}
 
 /**
  * Singleton OpenAI client. Imported by services that need image generation.
