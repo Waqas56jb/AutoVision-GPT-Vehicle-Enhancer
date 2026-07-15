@@ -90,6 +90,9 @@ export const enhance = asyncHandler(async (req, res) => {
       image: `data:image/png;base64,${finalB64}`,
       meta: {
         model: result.model,
+        // Which brief ran: exterior / interior / detail. Surfaced so a bad
+        // classification is visible rather than a silent mystery.
+        shotType: result.shotType,
         generatedSize: result.size,
         size: finalSize,
         format,

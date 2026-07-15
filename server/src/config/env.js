@@ -40,6 +40,18 @@ export const config = {
     imageModel: optional('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
     imageSize: optional('OPENAI_IMAGE_SIZE', '1536x1024'),
     imageQuality: optional('OPENAI_IMAGE_QUALITY', 'high'),
+    /**
+     * 'high' makes the model reproduce the FEATURES of the input photo instead of
+     * re-imagining them. The API default is 'low', which is why headlights,
+     * grilles and whole models were drifting. There is no reason to ever run this
+     * pipeline on 'low' — the whole product is "the same car, better photo".
+     */
+    inputFidelity: optional('OPENAI_INPUT_FIDELITY', 'high'),
+    /**
+     * Sorts each upload into exterior / interior / detail so the right prompt is
+     * used. Costs a fraction of a cent and never touches the delivered pixels.
+     */
+    visionModel: optional('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
     // Absorb OpenAI's 429s inside the SDK (exponential backoff) instead of
     // failing the image — expected behaviour once a batch runs wide.
     maxRetries: Number(optional('OPENAI_MAX_RETRIES', '5')),

@@ -2,179 +2,199 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *  AutoVision GPT — Vehicle Enhancement Prompt Engineering
  * ─────────────────────────────────────────────────────────────────────────────
- *  This module produces the natural-language instruction that drives the
- *  gpt-image-1 edit/compositing call. The prompt is intentionally long,
- *  explicit and deterministic so that thousands of dealership images render
- *  with consistent, advertising-grade quality.
+ *  Produces the instruction that drives the gpt-image edit call.
  *
- *  Image inputs passed to the model (order matters):
- *    [0] VEHICLE  — the photographer's raw shot (any location / lighting)
+ *  Image inputs (order matters — the prompt refers to them by number):
+ *    [0] VEHICLE    — the photographer's raw shot (any location / lighting)
  *    [1] BACKGROUND — the destination scene the vehicle must be placed into
  *
- *  Design principle: describe the DESIRED FINAL RESULT and the HARD RULES,
- *  not a chain of editing software steps. Image models respond best to a
- *  precise description of the target image plus strict constraints.
+ *  ── Tuned against the client's own feedback ────────────────────────────────
+ *
+ *  1. "It's actually changed their headlights on the car, and also changed the
+ *     whole model of some of the cars."
+ *     → FIDELITY comes FIRST and is written as a hard commercial constraint, not
+ *       a stylistic preference. It is also backed by `input_fidelity: 'high'` on
+ *       the API call, which is the real lever (see openai.service.js).
+ *     → The old prompt CONTRADICTED itself: it demanded "preserve the original
+ *       camera angle and the vehicle's orientation" and then asked for "a
+ *       flattering three-quarter framing that shows the front and one side".
+ *       That second clause licenses the model to re-pose — i.e. to re-draw — the
+ *       car. It is gone.
+ *
+ *  2. "The vehicle on the right occupies about 65% of the image and your
+ *     creation is about 50%. Do you agree?"
+ *     → Framing is now expressed as MARGINS, not as a percentage. A model cannot
+ *       measure "65% of the frame", but it can leave "a margin of about
+ *       one-sixth of the frame on each side", which is the same thing and is
+ *       something it can actually see itself doing.
+ *
+ *  3. "How about the interior images... when there is glass in the background,
+ *     can we have the showroom that is showing?"
+ *     → buildInteriorPrompt().
+ *
+ *  4. Wheel / badge / switch close-ups have no background to replace.
+ *     → buildDetailPrompt(): clean up only, change nothing else.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-/** Non-negotiable rules that protect the integrity of the vehicle. */
+/**
+ * The rules that keep the advertised car the same car that is for sale.
+ * Deliberately blunt: this is a legal and commercial constraint, not a taste one.
+ */
 const FIDELITY_RULES = `
-ABSOLUTE FIDELITY RULES (must never be violated):
-- The vehicle is the ONLY subject. Preserve it 100% accurately: exact body shape,
-  proportions, panel lines, badges, grille pattern, headlight and taillight design,
-  wheel/rim design, tyre profile, side mirrors, antenna and door handles.
-- Do NOT change the car's make, model, model year, colour, trim or wheel design.
-- Do NOT add, remove, redesign or "beautify" any part of the vehicle body.
-- Keep the licence plate exactly as it appears in the source (do not invent text).
-- Preserve the original camera angle and the vehicle's orientation. Do not rotate,
-  flip, re-pose or re-render the car from a different viewpoint.
-- Output must look like a real photograph, never an illustration, render or painting.
+RULE ZERO — THE CAR MUST NOT CHANGE. THIS OVERRIDES EVERYTHING ELSE.
+
+This is a real, specific vehicle that a real buyer will come and inspect in person.
+If the advertised car does not match the car on the lot, the advertisement is false
+and unusable. You are RELOCATING a photograph of this car. You are NOT imagining,
+redesigning, restyling or re-rendering a car.
+
+Copy the vehicle from IMAGE 1 exactly as photographed. Every one of these must be
+IDENTICAL to IMAGE 1, pixel for pixel:
+- Headlight and taillight shape, internal lens detail and light signature.
+- Grille pattern, mesh, chrome surrounds and lower air intakes.
+- Every badge, emblem, model name and lettering — exactly as written, in the same place.
+- Body shape, roofline, window line, panel gaps, creases and body-kit details.
+- Number of doors, mirror shape, aerial, door handles, spoiler.
+- Wheel and rim design, spoke count, brake calipers, tyre profile and sidewall.
+- The car's colour, trim level and any dealer stickers.
+
+NUMBER PLATES — READ THIS TWICE:
+- If IMAGE 1 shows a number plate, reproduce it EXACTLY: same characters, same colours,
+  same state or country design, same mounting position. Never re-letter it, never
+  "tidy" it, never substitute a different plate.
+- If IMAGE 1 shows NO plate on that end of the car — an empty bumper, a blank recess, a
+  plain grille — then the finished image must ALSO show no plate there. Leave the bumper
+  exactly as photographed.
+- NEVER invent a plate. Never add one because "a car should have one". A fabricated
+  registration on a dealership advertisement is a serious problem, not a detail.
+
+FORBIDDEN, without exception:
+- Do NOT swap the car for a different make, model, generation or body style.
+- Do NOT redesign the headlights, grille or wheels — not even "improved" versions.
+- Do NOT rotate, re-pose, straighten, mirror or re-photograph the car from another
+  angle. Keep the EXACT camera viewpoint and the EXACT orientation of IMAGE 1.
+- Do NOT stylise, idealise or "make it look better". Photographic realism only.
+
+If you are unsure about a detail, reproduce what IMAGE 1 shows. Never invent.
 `.trim();
 
-/** What to remove / clean up from the source vehicle. */
+/** What to clean up, without touching the car's identity. */
 const CLEANUP_RULES = `
-CLEAN-UP & ENHANCEMENT:
-- Remove the entire original background and every other vehicle, person, building,
-  sign, pole and distraction. Only the chosen background scene may remain.
-- IMPORTANT — GLARE & REFLECTION REMOVAL: actively remove harsh sun glare, blown-out
-  white hotspots, bright sky reflections and mirror-like flares from the bonnet, roof,
-  doors and windscreen. The paint should read as a smooth, even, premium finish with
-  only natural soft gloss — no distracting bright patches or sun blobs anywhere.
-- Even out uneven lighting across the body so one side is not washed out by sunlight.
-- Gently reveal the cabin through the glass if it is washed out by reflections,
-  but never fabricate a fake interior — keep it subtle and realistic.
-- Remove dirt smudges, dust, watermarks, timestamps and any overlaid text.
-- Refine the cut-out edges so they are crisp and natural around mirrors, aerials,
-  wheel arches and tyres — no haloing, no leftover background fringe.
-- Improve overall sharpness, white balance and contrast to a clean, premium finish.
+CLEAN-UP (applies to the scene and the finish, never to the car's design):
+- Remove the entire original background: other vehicles, people, buildings, signs,
+  poles, bins, fences and every other distraction. Only the new scene may remain.
+- GLARE & REFLECTIONS: remove harsh sun glare, blown-out white hotspots, sky
+  reflections and mirror-like flares from the bonnet, roof, doors and windscreen.
+  The paint should read as an even, premium finish with natural soft gloss only.
+- Even out lighting across the body so one side is not washed out by direct sun.
+- Where reflections hide the cabin, let the glass read naturally — but never invent
+  an interior that is not there.
+- Remove dirt, dust, water spots, watermarks, timestamps and any overlaid text.
+- Cut-out edges must be crisp and natural around mirrors, aerials, wheel arches and
+  tyres. No halo, no fringe, no leftover background.
+- Finish with clean sharpness, correct white balance and contrast.
 `.trim();
 
-/** How the vehicle must integrate with the new scene. */
+/** How the car must sit in the new scene. */
 const INTEGRATION_RULES = `
-SCENE INTEGRATION (make it believable — it must look genuinely photographed there, NOT AI-placed):
-- Place the vehicle naturally on the ground plane of the provided background so it
-  appears genuinely parked there, with correct scale and a realistic eye-level.
-- Match the background's lighting direction, intensity and colour temperature onto
-  the car so highlights and shadows on the body agree with the scene's light source.
-- SHADOWS (critical for realism): cast a strong, believable ground shadow beneath and
-  to one side of the vehicle, in the SAME direction as the scene's light source. Build
-  it in layers: (a) a dark, tight contact/ambient-occlusion shadow exactly where each
-  tyre and the underbody meet the ground, then (b) a softer, gradually fading cast
-  shadow extending across the ground. The shadow must be grounded and connected to the
-  tyres — never floating, never a flat black blob, never a faint grey smudge. Match its
-  softness to the scene light (hard sun = crisper edge, overcast = very soft).
-- Add a faint, realistic reflection/sheen of the car onto the ground surface if the
-  surface is reflective (wet, polished, tiled), consistent with the location.
-- Match perspective and depth of field so the car and background share one camera.
-- Add subtle, realistic environmental reflections from the new scene onto the glass
-  and glossy panels, consistent with the surroundings.
+SCENE INTEGRATION — it must look genuinely photographed there, not pasted:
+- Stand the vehicle on the ground plane of IMAGE 2 at a believable scale and eye level.
+- Match IMAGE 2's lighting direction, intensity and colour temperature onto the car,
+  so the highlights and shading on the body agree with the scene's light.
+- SHADOWS (this is what sells it). Build them in two layers:
+    (a) a tight, dark contact shadow exactly where each tyre meets the ground, and
+        under the sills and bumpers — the car must look connected to the floor;
+    (b) a softer cast shadow spreading away from the car in the SAME direction as
+        the scene's light, fading with distance.
+  Never a floating car. Never a flat black oval. Never a faint grey smudge.
+  Hard sunlight = crisper shadow edge. Overcast or indoor = very soft.
+- If the floor is polished, tiled or wet, add a faint, believable reflection of the
+  car in it — subtle, not a mirror.
+- Share one camera between car and background: matching perspective and depth of field.
+- Let the new scene cast subtle, appropriate reflections onto the glass and paint.
 `.trim();
 
 /**
- * Framing presets controlling how much of the frame the vehicle fills.
- * The dealer's #1 note: "the car is the product, not the background."
+ * Framing.
+ *
+ * Expressed as MARGINS rather than a percentage on purpose. The old prompt asked
+ * for "78–86% of the frame width" and the client measured the result at 50%: a
+ * model cannot check its own arithmetic, but it can see that it has left a gap of
+ * roughly one-sixth of the frame beside the car.
  */
 const FRAMING_PRESETS = {
-  standard: 'roughly 70–80% of the frame width',
-  large: 'roughly 78–86% of the frame width',
-  hero: 'roughly 85–92% of the frame width (a tight, bold hero crop)',
+  standard: {
+    margin: 'about one-fifth (20%) of the frame width',
+    note: 'the car reads large, with a little scene either side',
+  },
+  large: {
+    margin: 'about one-sixth (15–17%) of the frame width',
+    note: 'this is the house standard — match it unless told otherwise',
+  },
+  hero: {
+    margin: 'about one-twelfth (8%) of the frame width',
+    note: 'a tight, bold hero crop',
+  },
 };
 
 export const FRAMING_LEVELS = Object.keys(FRAMING_PRESETS);
 export const DEFAULT_FRAMING = 'large';
 
-/**
- * Build the composition rules for a given framing level.
- * @param {keyof typeof FRAMING_PRESETS} framing
- */
 function composition(framing = DEFAULT_FRAMING) {
-  const fill = FRAMING_PRESETS[framing] || FRAMING_PRESETS[DEFAULT_FRAMING];
+  const p = FRAMING_PRESETS[framing] || FRAMING_PRESETS[DEFAULT_FRAMING];
   return `
-COMPOSITION & OUTPUT (the CAR is the product — the background only sets the scene):
-- The vehicle MUST be the dominant subject and fill the MAJORITY of the frame: ${fill}.
-  Crop/zoom in tight so the car is large and prominent — scale the car UP rather than
-  showing empty scenery, sky or foreground.
-- The background must occupy clearly LESS THAN HALF of the image and must never compete
-  with or distract from the car.
-- Keep only a small, tasteful margin around the car (a little headroom above the roof
-  and a little ground below the tyres) — no large empty borders, no tiny car in a big scene.
-- Centre the vehicle as the clear hero, like a premium dealership advertising hero shot,
-  with a flattering three-quarter framing that shows the front and one side.
-- Clean, distraction-free result suitable for dealership websites, Carsales,
-  Facebook and Google Ads.
-- Photorealistic, high-resolution, colour-accurate, ready to publish as-is.
+COMPOSITION — THE CAR IS THE PRODUCT, THE BACKGROUND IS ONLY THE STAGE:
+- The vehicle must DOMINATE the frame. Scale the car UP. Do not shrink it to show
+  more scenery — empty sky, empty road and empty floor are wasted advertising space.
+- Leave a margin of ${p.margin} between the car's bodywork and the left edge, and the
+  same again on the right (${p.note}). The car's front and rear should come close to
+  those margins.
+- Vertically: a small amount of headroom above the roof, and enough floor below the
+  tyres to carry the shadow. The car should sit slightly below the centre line.
+- Centre the car horizontally. Keep the SAME viewpoint as IMAGE 1 — do not re-angle
+  the car to make it "more flattering".
+- The background must read as a clean, quiet backdrop, never competing with the car.
+- Every image in a batch must be framed the SAME way. Consistency across a listing
+  matters more than any single photo being unusually striking.
+- Photorealistic, colour-accurate, ready to publish on Carsales, a dealer website,
+  Facebook or Google Ads with no further editing.
 `.trim();
 }
 
-/**
- * Optional paint-colour-change clause, appended when a target colour is chosen.
- * @param {string} [colorName]
- * @param {string} [colorHex]
- */
+/** Optional paint-colour change, appended when a target colour is chosen. */
 export function recolorClause(colorName, colorHex) {
   if (!colorName) return '';
   return `
-PAINT COLOUR CHANGE (also apply):
-- Change the car's body paint colour to ${colorName}${colorHex ? ` (approximately ${colorHex})` : ''}.
-- Apply it ONLY to the painted body panels (bonnet, doors, roof, guards, boot, painted
-  bumpers). Do NOT tint the wheels, tyres, glass, lights, grille, badges, plate or trim.
-- Re-render highlights and reflections in the new colour following the same light
-  direction; keep it photoreal automotive paint (correct gloss, not a flat fill).`.trim();
+PAINT COLOUR CHANGE (apply this, and only this, to the car):
+- Repaint the body panels ${colorName}${colorHex ? ` (approximately ${colorHex})` : ''}.
+- ONLY the painted panels: bonnet, doors, roof, guards, boot and painted bumpers.
+- Do NOT tint the wheels, tyres, glass, lights, grille, badges, plate, chrome or trim.
+- Keep the paint's existing highlights, reflections and shading — re-render them in the
+  new colour under the same light. It must look like real automotive paint with correct
+  gloss and depth, not a flat colour fill.
+- Everything in RULE ZERO still applies. The colour changes; the CAR does not.`.trim();
+}
+
+/** Notes from the dealer, appended without letting them override the hard rules. */
+function dealerNotes(notes) {
+  if (!notes || !notes.trim()) return '';
+  return `\n\nADDITIONAL DEALER INSTRUCTIONS (apply only where they do not conflict with RULE ZERO):\n${notes.trim()}`;
 }
 
 /**
- * Prompt for KEEPING the original background — enhance (and optionally recolour)
- * without replacing the scene. Used for the "Keep original" background mode.
- * @param {object} [opts]
- */
-export function buildKeepBackgroundPrompt(opts = {}) {
-  const { notes, colorName, colorHex } = opts;
-  const clause = recolorClause(colorName, colorHex);
-  const base = `
-You are an expert automotive retoucher enhancing a dealership photo while KEEPING its
-original background.
-
-TASK: Reproduce the SAME scene — same background, camera angle, vehicle position, pose and
-framing. Do NOT replace, move or regenerate the background. Improve the image to clean,
-photorealistic dealership advertising quality.
-
-${FIDELITY_RULES}
-
-ENHANCE (without changing the scene):
-- Reduce harsh sun glare, blown-out hotspots and mirror-like reflections on the paintwork,
-  bonnet, roof and windscreen, keeping natural gloss.
-- Remove dirt, dust, watermarks, timestamps and overlaid text.
-- Clean and sharpen the overall image; correct white balance and contrast.
-- Strengthen the existing ground/contact shadow so it looks natural and believable, in the
-  same direction as the scene's light.
-${clause ? `\n${clause}\n` : ''}
-OUTPUT: the same scene and framing, enhanced${colorName ? ` and recoloured to ${colorName}` : ''}, dealership-ready.
-`.trim();
-
-  const dealerNotes = notes && notes.trim()
-    ? `\n\nADDITIONAL INSTRUCTIONS (apply without breaking the rules above):\n${notes.trim()}`
-    : '';
-  return `${base}${dealerNotes}`;
-}
-
-/**
- * Build the full enhancement prompt.
- * @param {object} [opts]
- * @param {string} [opts.notes] - Optional dealer instructions appended to the brief.
- * @returns {string}
+ * EXTERIOR + new background. The main path.
  */
 export function buildVehicleEnhancementPrompt(opts = {}) {
   const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
   const clause = recolorClause(colorName, colorHex);
 
-  const base = `
-You are an expert automotive retoucher and compositor producing dealership-grade
-marketing photography.
+  return `${`
+You are an expert automotive retoucher preparing a dealership advertisement.
 
-TASK: Using IMAGE 1 (the source VEHICLE) and IMAGE 2 (the destination BACKGROUND),
-produce a single photorealistic image of the SAME vehicle from IMAGE 1, cleanly
-cut out from its original surroundings and naturally placed into the scene from
-IMAGE 2 — finished to professional advertising quality.
+TASK: Take the vehicle in IMAGE 1, cut it cleanly out of its surroundings, and place
+that SAME vehicle into the scene from IMAGE 2. Produce one photorealistic advertising
+image, finished to professional dealership standard.
 
 ${FIDELITY_RULES}
 
@@ -184,28 +204,22 @@ ${INTEGRATION_RULES}
 
 ${composition(framing)}
 ${clause ? `\n${clause}\n` : ''}
-`.trim();
-
-  const dealerNotes = notes && notes.trim()
-    ? `\n\nADDITIONAL DEALER INSTRUCTIONS (apply without breaking the rules above):\n${notes.trim()}`
-    : '';
-
-  return `${base}${dealerNotes}`;
+`.trim()}${dealerNotes(notes)}`;
 }
 
 /**
- * Variant prompt for when NO background image is supplied — the model should
- * instead place the vehicle on a clean, neutral studio-style backdrop.
+ * EXTERIOR, no background supplied — a clean studio sweep instead.
  */
 export function buildStudioEnhancementPrompt(opts = {}) {
   const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
   const clause = recolorClause(colorName, colorHex);
-  const base = `
-You are an expert automotive retoucher producing dealership-grade marketing photography.
 
-TASK: Using IMAGE 1 (the source VEHICLE), cleanly remove the original background and
-present the SAME vehicle on a clean, seamless, softly-lit neutral studio backdrop
-(light grey gradient) with a polished reflective floor.
+  return `${`
+You are an expert automotive retoucher preparing a dealership advertisement.
+
+TASK: Take the vehicle in IMAGE 1, remove its original background, and present that
+SAME vehicle on a clean, seamless, softly-lit neutral studio backdrop (light grey
+gradient) standing on a polished reflective floor.
 
 ${FIDELITY_RULES}
 
@@ -213,18 +227,120 @@ ${CLEANUP_RULES}
 
 STUDIO INTEGRATION:
 - Even, soft, professional studio lighting with gentle wrap highlights along the body.
-- Soft contact shadow and a tasteful floor reflection beneath the tyres.
-- No props, no text, no other objects — only the hero vehicle on the backdrop.
+- A tight dark contact shadow under each tyre, plus a soft cast shadow on the floor.
+- A restrained reflection of the car in the polished floor.
+- No props, no text, no other objects — only the car on the backdrop.
 
 ${composition(framing)}
 ${clause ? `\n${clause}\n` : ''}
-`.trim();
+`.trim()}${dealerNotes(notes)}`;
+}
 
-  const dealerNotes = notes && notes.trim()
-    ? `\n\nADDITIONAL DEALER INSTRUCTIONS (apply without breaking the rules above):\n${notes.trim()}`
-    : '';
+/**
+ * KEEP the original background — enhance in place.
+ */
+export function buildKeepBackgroundPrompt(opts = {}) {
+  const { notes, colorName, colorHex } = opts;
+  const clause = recolorClause(colorName, colorHex);
 
-  return `${base}${dealerNotes}`;
+  return `${`
+You are an expert automotive retoucher enhancing a dealership photo while KEEPING its
+original background.
+
+TASK: Reproduce the SAME scene — same background, same camera angle, same vehicle
+position, pose and framing. Do NOT replace, move or regenerate the background. Improve
+the image to clean, photorealistic dealership advertising quality.
+
+${FIDELITY_RULES}
+
+ENHANCE (without changing the scene):
+- Reduce harsh sun glare, blown-out hotspots and mirror-like reflections on the paint,
+  bonnet, roof and windscreen. Keep natural gloss.
+- Remove dirt, dust, watermarks, timestamps and overlaid text.
+- Clean and sharpen the image; correct white balance and contrast.
+- Strengthen the existing contact and cast shadow so the car sits believably on the
+  ground, in the same direction as the scene's light.
+${clause ? `\n${clause}\n` : ''}
+OUTPUT: the same scene and framing, enhanced${colorName ? ` and recoloured to ${colorName}` : ''}, dealership-ready.
+`.trim()}${dealerNotes(notes)}`;
+}
+
+/**
+ * INTERIOR — dashboard, seats, boot.
+ *
+ * The client's ask: "when there is glass in the background, can we have the
+ * showroom that is showing?" So the cabin is left completely alone and ONLY the
+ * view through the windows is replaced. Getting greedy here — "improving" the
+ * dashboard — would wreck the shot.
+ */
+export function buildInteriorPrompt(opts = {}) {
+  const { notes, hasBackground } = opts;
+  const throughGlass = hasBackground
+    ? `the showroom scene from IMAGE 2`
+    : `a clean, bright, upmarket car-dealership showroom: glass facade, polished floor, soft daylight`;
+
+  return `${`
+You are an expert automotive retoucher finishing an INTERIOR photo of a car for a
+dealership listing.
+
+TASK: Keep the cabin EXACTLY as photographed. Change ONLY what can be seen OUTSIDE the
+car through its windows and glass.
+
+RULE ZERO — THE CABIN MUST NOT CHANGE:
+- The dashboard, screens, steering wheel, seats, trim, stitching, buttons, switches,
+  vents, gear selector and boot lining must be IDENTICAL to IMAGE 1.
+- Whatever is displayed on the infotainment screen and instrument cluster stays exactly
+  as it is. Do not re-render, re-word or "tidy" the screens.
+- Do not change materials, colours, textures or the layout of any control.
+- Do not change the camera angle or re-frame the shot. Same viewpoint, same crop.
+
+REPLACE ONLY THE VIEW THROUGH THE GLASS:
+- Wherever the outside world is visible through the windscreen, side windows, rear
+  window or open boot — replace that view with ${throughGlass}.
+- Remove the street, other cars, houses, trees, signs and sky that currently show
+  through the glass.
+- The view outside must be DEFOCUSED and softly blurred, as it genuinely would be when
+  the camera is focused on the dashboard. It must sit behind the glass, not on top of it.
+- Keep the glass reading as glass: preserve its reflections, tint and any window frame,
+  pillar or seal in front of it.
+- Match the outside light to the cabin's existing exposure so it does not look pasted in.
+
+CLEAN-UP: remove dust, smudges, fingerprints, watermarks and any overlaid text.
+
+OUTPUT: the same interior photo, same angle, same crop — now looking like it was taken
+inside the dealership.
+`.trim()}${dealerNotes(notes)}`;
+}
+
+/**
+ * DETAIL close-ups — wheel, badge, headlight, a switch on the door card.
+ *
+ * The subject already fills the frame; there is no background to replace, and
+ * trying to replace one destroys the shot. Clean it up and hand it back.
+ */
+export function buildDetailPrompt(opts = {}) {
+  const { notes } = opts;
+
+  return `${`
+You are an expert automotive retoucher finishing a CLOSE-UP DETAIL photo for a
+dealership listing (a wheel, a badge, a headlight, a switch, a screen, a mirror).
+
+TASK: Clean and polish this photograph. Change NOTHING about what it shows.
+
+RULE ZERO — THE SUBJECT MUST NOT CHANGE:
+- Reproduce the part EXACTLY: same shape, same lettering, same finish, same wear.
+- Badge and model text must read exactly as it does in IMAGE 1.
+- Wheel and rim design, spoke count, tyre sidewall text and brake caliper: identical.
+- Do NOT replace or regenerate the background. Do NOT re-frame, re-angle or re-crop.
+- Do NOT invent detail that is not in the photograph.
+
+CLEAN UP ONLY:
+- Reduce harsh glare and blown-out hotspots; keep natural gloss and metallic sheen.
+- Remove dust, dirt, smudges, fingerprints, water spots, watermarks and overlaid text.
+- Correct white balance and contrast; sharpen gently.
+
+OUTPUT: the same photograph, same crop, same subject — just clean and print-ready.
+`.trim()}${dealerNotes(notes)}`;
 }
 
 export default buildVehicleEnhancementPrompt;

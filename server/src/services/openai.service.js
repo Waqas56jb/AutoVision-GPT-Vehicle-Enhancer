@@ -7,8 +7,11 @@ import {
   buildVehicleEnhancementPrompt,
   buildStudioEnhancementPrompt,
   buildKeepBackgroundPrompt,
+  buildInteriorPrompt,
+  buildDetailPrompt,
 } from '../prompts/vehicleEnhancement.prompt.js';
 import { buildRecolorPrompt } from '../prompts/recolor.prompt.js';
+import { detectShotType } from './shotType.service.js';
 
 /**
  * Low-level wrapper around the gpt-image-1 edit endpoint with consistent error
@@ -29,6 +32,18 @@ async function runImageEdit({ imageFiles, prompt, size }) {
       prompt,
       size,
       quality: config.openai.imageQuality,
+      /**
+       * THE fix for "it changed their headlights and the whole model of the car".
+       *
+       * input_fidelity tells the model how hard to work at reproducing the
+       * FEATURES of the input images rather than re-imagining them — and it
+       * DEFAULTS TO 'low'. Every image this app has ever produced was generated
+       * with the model free to redraw the car from memory, which is exactly what
+       * it did. No amount of prompt wording overrides a low-fidelity default.
+       *
+       * Supported on gpt-image-1 and later (not on gpt-image-1-mini).
+       */
+      input_fidelity: config.openai.inputFidelity,
       n: 1,
     });
   } catch (err) {
@@ -81,26 +96,46 @@ export async function enhanceVehicleImage({
   // Resolve the effective mode: a supplied background always means "replace".
   const effectiveMode = usedBackground ? 'replace' : mode === 'keep' ? 'keep' : 'studio';
 
+  /* Which KIND of photo is this? A dealer listing is mostly interior and detail
+     shots — running the exterior prompt over a dashboard is how you end up with
+     a steering wheel parked on a showroom floor. One cheap vision call picks the
+     right brief. Falls back to 'exterior' (the old behaviour) if it can't tell. */
+  const shot = await detectShotType(vehicleBuffer);
+
   let prompt;
-  if (effectiveMode === 'replace') prompt = buildVehicleEnhancementPrompt({ notes, framing, colorName, colorHex });
-  else if (effectiveMode === 'keep') prompt = buildKeepBackgroundPrompt({ notes, colorName, colorHex });
-  else prompt = buildStudioEnhancementPrompt({ notes, framing, colorName, colorHex });
+  if (shot.type === 'interior') {
+    prompt = buildInteriorPrompt({ notes, hasBackground: usedBackground });
+  } else if (shot.type === 'detail') {
+    prompt = buildDetailPrompt({ notes });
+  } else if (effectiveMode === 'replace') {
+    prompt = buildVehicleEnhancementPrompt({ notes, framing, colorName, colorHex });
+  } else if (effectiveMode === 'keep') {
+    prompt = buildKeepBackgroundPrompt({ notes, colorName, colorHex });
+  } else {
+    prompt = buildStudioEnhancementPrompt({ notes, framing, colorName, colorHex });
+  }
+
+  /* A detail close-up has no background to composite, so sending one only invites
+     the model to paste a showroom behind a wheel nut. */
+  const sendBackground = usedBackground && shot.type !== 'detail';
 
   // Order matters: [0] vehicle, [1] background (the prompt references this order).
   const imageFiles = [await toFile(vehicleBuffer, 'vehicle.png', { type: 'image/png' })];
-  if (usedBackground) {
+  if (sendBackground) {
     imageFiles.push(await toFile(backgroundBuffer, 'background.png', { type: 'image/png' }));
   }
 
   logger.info(
-    `Requesting ${config.openai.imageModel} enhance ` +
-      `(size=${outputSize}, quality=${config.openai.imageQuality}, mode=${effectiveMode}, framing=${framing || 'default'}, colour=${colorName || 'none'})`
+    `Requesting ${config.openai.imageModel} enhance — shot=${shot.type} (${shot.source}), ` +
+      `mode=${effectiveMode}, fidelity=${config.openai.inputFidelity}, size=${outputSize}, ` +
+      `quality=${config.openai.imageQuality}, framing=${framing || 'default'}, colour=${colorName || 'none'}`
   );
 
   const b64 = await runImageEdit({ imageFiles, prompt, size: outputSize });
 
   return {
     b64,
+    shotType: shot.type,
     model: config.openai.imageModel,
     size: outputSize,
     quality: config.openai.imageQuality,
