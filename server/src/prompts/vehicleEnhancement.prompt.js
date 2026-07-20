@@ -59,6 +59,20 @@ IDENTICAL to IMAGE 1, pixel for pixel:
 - Wheel and rim design, spoke count, brake calipers, tyre profile and sidewall.
 - The car's colour, trim level and any dealer stickers.
 
+BRANDING AND NAMES — THE MOST SERIOUS RULE HERE:
+- NEVER change the manufacturer. Do not turn this car into a different brand.
+- NEVER write a brand or model name onto the car that is not already in IMAGE 1.
+  Do not add "RANGE ROVER", "LAND ROVER", "TOYOTA", "LEXUS" or ANY other maker's name
+  or logo. If IMAGE 1 has no lettering on the bonnet, doors or tailgate, the finished
+  image must have none either.
+- If IMAGE 1 DOES show a name or badge, copy it CHARACTER FOR CHARACTER. Do not correct
+  its spelling, do not re-space it, do not swap it for a brand you recognise, and do not
+  "improve" an unfamiliar marque into a familiar one.
+- Many of these vehicles are makes you may not recognise. An unfamiliar grille or badge
+  is NOT an error to be fixed — it is the actual car being sold. Reproduce it as-is.
+- Putting another manufacturer's name on a car is trademark infringement and makes the
+  advertisement fraudulent. This is the single worst mistake you can make here.
+
 NUMBER PLATES — READ THIS TWICE:
 - If IMAGE 1 shows a number plate, reproduce it EXACTLY: same characters, same colours,
   same state or country design, same mounting position. Never re-letter it, never
@@ -72,9 +86,27 @@ NUMBER PLATES — READ THIS TWICE:
 FORBIDDEN, without exception:
 - Do NOT swap the car for a different make, model, generation or body style.
 - Do NOT redesign the headlights, grille or wheels — not even "improved" versions.
-- Do NOT rotate, re-pose, straighten, mirror or re-photograph the car from another
-  angle. Keep the EXACT camera viewpoint and the EXACT orientation of IMAGE 1.
 - Do NOT stylise, idealise or "make it look better". Photographic realism only.
+
+VIEWPOINT vs LEVELLING — these are two different things, do not confuse them:
+
+  FORBIDDEN — changing which side of the car we are looking at:
+  - Do NOT mirror or flip the image. If the car faces LEFT in IMAGE 1 it must face LEFT
+    in the output; if it faces RIGHT it must stay facing RIGHT. Check this before you
+    finish: the same headlight, the same door, the same wheel must be nearest the camera.
+  - Do NOT re-pose the car, swing it around, or re-photograph it from another position.
+  - Do NOT change a rear view into a front view, or a side view into a three-quarter view.
+  - The camera's POSITION relative to the car must not move.
+
+  REQUIRED — levelling a crooked photo:
+  - These photos are taken quickly on a phone and are often tilted a few degrees.
+    Correct that: the finished image must sit LEVEL, with the horizon, the kerb, the
+    building lines and the ground plane horizontal, and the car sitting flat and upright
+    rather than leaning.
+  - Do this the way a photographer does — rotate the whole frame slightly and crop — NOT
+    by re-drawing the car from a different angle.
+  - Levelling changes the TILT of the picture. It must never change which way the car
+    faces or which side of it we can see.
 
 If you are unsure about a detail, reproduce what IMAGE 1 shows. Never invent.
 `.trim();
