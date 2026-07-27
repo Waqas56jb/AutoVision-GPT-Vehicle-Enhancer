@@ -34,7 +34,14 @@ export default function CanvasStage({ selected, isRunning, settled, total, onAdd
         <div className="min-w-0">
           {selected ? (
             <>
-              <p className="truncate text-sm font-bold text-slate-800">{selected.name}</p>
+              <p className="flex items-center gap-2 truncate text-sm font-bold text-slate-800">
+                {selected.stock && (
+                  <span className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[11px] font-bold text-brand-700">
+                    #{selected.stock}
+                  </span>
+                )}
+                <span className="truncate">{selected.name}</span>
+              </p>
               <p className="micro mt-0.5">
                 {selected.meta?.size || (selected.status === 'pending' ? 'Generating…' : 'Failed')}
               </p>
@@ -77,7 +84,8 @@ export default function CanvasStage({ selected, isRunning, settled, total, onAdd
               onClick={() =>
                 downloadDataUrl(
                   selected.image,
-                  `enhanced-${selected.name.replace(/\.[^.]+$/, '')}.png`
+                  // Name the file by its stock number when one was entered.
+                  `${selected.downloadName || `enhanced-${selected.name.replace(/\.[^.]+$/, '')}`}.png`
                 )
               }
               className="btn-primary px-3.5 py-2 text-xs"

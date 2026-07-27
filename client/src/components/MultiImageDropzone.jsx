@@ -4,17 +4,24 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { UploadCloud, X, ImagePlus } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { ACCEPTED_IMAGE_TYPES, MAX_FILE_MB } from '../constants/index.js';
+import { ACCEPTED_IMAGE_TYPES, MAX_FILE_MB, fileKey } from '../constants/index.js';
 
 /**
  * Multi-file image picker for batch vehicle uploads (1–100 images).
  *
+ * Each photo can carry a STOCK NUMBER. The client tracks cars by stock number,
+ * and wants the finished file named after it, so the input lives right on the
+ * thumbnail and is keyed by the file's stable identity (not its index) so
+ * removing a photo never shuffles stock numbers onto the wrong car.
+ *
  * @param {object} props
  * @param {File[]} props.files
  * @param {(files:File[])=>void} props.onChange
+ * @param {Record<string,string>} [props.stocks]        stock number by fileKey
+ * @param {(key:string, value:string)=>void} [props.onStockChange]
  * @param {boolean} [props.disabled]
  */
-export default function MultiImageDropzone({ files, onChange, disabled }) {
+export default function MultiImageDropzone({ files, onChange, stocks = {}, onStockChange, disabled }) {
   /* Object URLs are created once per file and revoked when it goes away —
      building them inline during render leaks a blob on every keystroke. */
   const [previews, setPreviews] = useState([]);
@@ -97,50 +104,70 @@ export default function MultiImageDropzone({ files, onChange, disabled }) {
       </div>
 
       {files.length > 0 && (
-        <div className="mt-3 grid grid-cols-3 gap-2.5">
-          <AnimatePresence mode="popLayout">
-            {files.map((f, i) => (
-              <motion.div
-                key={`${f.name}-${f.lastModified}-${i}`}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-                className="group relative aspect-square overflow-hidden rounded-xl border border-brand-100 bg-brand-50 shadow-soft"
-              >
-                {previews[i] && (
-                  <img
-                    src={previews[i]}
-                    alt={f.name}
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  />
-                )}
-                <div className="absolute inset-0 bg-brand-900/0 transition group-hover:bg-brand-900/25" />
-                <button
-                  type="button"
-                  onClick={() => removeAt(i)}
-                  disabled={disabled}
-                  className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-slate-600 opacity-0 shadow-soft transition hover:bg-red-500 hover:text-white group-hover:opacity-100"
-                  title="Remove"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            <AnimatePresence mode="popLayout">
+              {files.map((f, i) => {
+                const key = fileKey(f);
+                return (
+                  <motion.div
+                    key={key}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden rounded-xl border border-brand-100 bg-white shadow-soft"
+                  >
+                    <div className="group relative aspect-[4/3] overflow-hidden bg-brand-50">
+                      {previews[i] && (
+                        <img
+                          src={previews[i]}
+                          alt={f.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-brand-900/0 transition group-hover:bg-brand-900/25" />
+                      <button
+                        type="button"
+                        onClick={() => removeAt(i)}
+                        disabled={disabled}
+                        className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-slate-600 opacity-0 shadow-soft transition hover:bg-red-500 hover:text-white group-hover:opacity-100"
+                        title="Remove"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {/* Stock number — becomes the downloaded file's name. */}
+                    <input
+                      type="text"
+                      value={stocks[key] || ''}
+                      disabled={disabled}
+                      onChange={(e) => onStockChange?.(key, e.target.value)}
+                      placeholder="Stock #"
+                      title="Stock number — used as the file name on download"
+                      className="w-full border-0 border-t border-brand-50 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:bg-brand-50/60"
+                    />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
 
-          {/* Add-more tile keeps the picker reachable once the grid fills up. */}
-          <button
-            type="button"
-            onClick={open}
-            disabled={disabled}
-            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 text-xs font-medium text-brand-500 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60"
-          >
-            <ImagePlus className="h-5 w-5" />
-            Add more
-          </button>
-        </div>
+            {/* Add-more tile keeps the picker reachable once the grid fills up. */}
+            <button
+              type="button"
+              onClick={open}
+              disabled={disabled}
+              className="flex aspect-[4/3] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 text-xs font-medium text-brand-500 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60"
+            >
+              <ImagePlus className="h-5 w-5" />
+              Add more
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">
+            Add a stock number to each car — the finished image downloads with that name.
+          </p>
+        </>
       )}
     </div>
   );

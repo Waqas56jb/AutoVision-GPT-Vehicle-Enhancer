@@ -4,8 +4,9 @@ import ApiError from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
 import { normaliseInput, describe, fromBase64, resizeTo } from '../services/image.service.js';
 import { enhanceVehicleImage } from '../services/openai.service.js';
+import { autoFrameToFill } from '../services/autoFrame.service.js';
 import { resolveBackgroundPath } from '../services/backgrounds.service.js';
-import { FRAMING_LEVELS, DEFAULT_FRAMING } from '../prompts/vehicleEnhancement.prompt.js';
+import { FRAMING_LEVELS, DEFAULT_FRAMING, FRAMING_FILL } from '../prompts/vehicleEnhancement.prompt.js';
 import { resolveFormat } from '../config/formats.js';
 
 /**
@@ -72,14 +73,36 @@ export const enhance = asyncHandler(async (req, res) => {
     size: preset.genSize,
   });
 
-  // Deliver the platform-exact size when the preset requires it (e.g. Carsales 1280x853).
-  let finalB64 = result.b64;
-  let finalSize = result.size;
-  if (preset.out) {
-    const resized = await resizeTo(fromBase64(result.b64), preset.out.w, preset.out.h);
-    finalB64 = resized.toString('base64');
-    finalSize = `${preset.out.w}x${preset.out.h}`;
+  // Final delivery size: the platform-exact size when required (Carsales
+  // 1280x853), otherwise the native generated size.
+  const [genW, genH] = result.size.split('x').map(Number);
+  const outW = preset.out?.w || genW;
+  const outH = preset.out?.h || genH;
+
+  const genBuf = fromBase64(result.b64);
+  let finalBuf;
+  let framedApplied = false;
+  let framedFill = null;
+
+  if (result.shotType === 'exterior') {
+    /* The car's size is GUARANTEED here, not left to the model. We measure where
+       the car landed in the render and crop-zoom it to the target fill. This is
+       the fix for the client's repeated "car is too small / even hero too small"
+       — the model's own framing was landing at ~60–75% regardless of the prompt.
+       On any low-confidence measurement it safely falls back to a plain resize. */
+    const fill = FRAMING_FILL[framing] || FRAMING_FILL[DEFAULT_FRAMING];
+    const framed = await autoFrameToFill(genBuf, { fillWidth: fill, outW, outH });
+    finalBuf = framed.buffer;
+    framedApplied = framed.applied;
+    framedFill = framed.fill;
+  } else {
+    // Interior and detail shots must NOT be zoomed — the whole frame is the
+    // subject. Deliver at the platform size unchanged.
+    finalBuf = await resizeTo(genBuf, outW, outH);
   }
+
+  const finalB64 = finalBuf.toString('base64');
+  const finalSize = `${outW}x${outH}`;
 
   const elapsedMs = Date.now() - startedAt;
   logger.success(`Enhancement complete in ${elapsedMs}ms (delivered ${finalSize})`);
@@ -100,6 +123,10 @@ export const enhance = asyncHandler(async (req, res) => {
         usedBackground: result.usedBackground,
         mode: result.mode,
         framing: result.framing,
+        // How the car ended up sized: whether the deterministic auto-frame ran,
+        // and the car's final width as a fraction of the frame.
+        autoFramed: framedApplied,
+        fill: framedFill,
         colorName: result.colorName,
         colorHex: result.colorHex,
         elapsedMs,

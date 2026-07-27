@@ -13,6 +13,7 @@
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
     "framer-motion": "^11.5.4",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-compare-slider": "^3.1.0",

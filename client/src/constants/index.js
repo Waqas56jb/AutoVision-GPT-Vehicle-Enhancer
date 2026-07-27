@@ -10,6 +10,14 @@ export const ACCEPTED_IMAGE_TYPES = {
 export const MAX_FILE_MB = 25;
 
 /**
+ * A stable identity for an uploaded File, independent of its position in the
+ * list. Used to attach a stock number to each photo and carry it through to the
+ * result and the downloaded filename, so removing a photo never reassigns
+ * another photo's stock number.
+ */
+export const fileKey = (f) => `${f.name}__${f.size}__${f.lastModified}`;
+
+/**
  * How many images to render at the same time.
  *
  * The wall-clock time for a batch is roughly `ceil(jobs / CONCURRENCY) × ~60s`,

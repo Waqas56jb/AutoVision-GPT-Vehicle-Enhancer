@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { enhanceImage } from '../api/enhance.api.js';
 import { compressImage } from '../utils/compressImage.js';
-import { BATCH_CONCURRENCY, MAX_ATTEMPTS } from '../constants/index.js';
+import { BATCH_CONCURRENCY, MAX_ATTEMPTS, fileKey } from '../constants/index.js';
 
 /**
  * Unified processing hook (single page). Builds one job per
@@ -34,7 +34,7 @@ export function useProcess() {
      collects its own 429 — the batch degrades instead of throttling. */
   const cooldownUntil = useRef(0);
 
-  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes }) => {
+  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes, stocks = {} }) => {
     if (!vehicles?.length) {
       toast.error('Add at least one vehicle photo.');
       return;
@@ -50,13 +50,22 @@ export function useProcess() {
     // Build the job list (vehicle × colour).
     const jobs = [];
     vehicles.forEach((file, vIdx) => {
+      const stock = (stocks[fileKey(file)] || '').trim();
       colorPasses.forEach((c) => {
         jobs.push({
           key: `${file.name}-${vIdx}-${c ? c.key : 'orig'}`,
           file,
           fileName: file.name,
+          stock,
           color: c,
           label: c ? `${file.name} · ${c.name}` : file.name,
+          // The download name: stock number when given (with the colour appended
+          // for multi-colour runs), else the original file name.
+          downloadName: stock
+            ? c && colors.length > 1
+              ? `${stock}-${c.name}`
+              : stock
+            : file.name.replace(/\.[^.]+$/, ''),
         });
       });
     });
@@ -67,6 +76,8 @@ export function useProcess() {
       jobs.map((j) => ({
         key: j.key,
         name: j.label,
+        stock: j.stock,
+        downloadName: j.downloadName,
         hex: j.color?.hex || null,
         originalUrl: URL.createObjectURL(j.file),
         status: 'pending',

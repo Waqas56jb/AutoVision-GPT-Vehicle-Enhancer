@@ -157,21 +157,38 @@ SCENE INTEGRATION — it must look genuinely photographed there, not pasted:
  */
 const FRAMING_PRESETS = {
   standard: {
-    margin: 'about one-fifth (20%) of the frame width',
+    margin: 'about one-seventh (14%) of the frame width',
     note: 'the car reads large, with a little scene either side',
   },
   large: {
-    margin: 'about one-sixth (15–17%) of the frame width',
+    margin: 'about one-tenth (10%) of the frame width',
     note: 'this is the house standard — match it unless told otherwise',
   },
   hero: {
-    margin: 'about one-twelfth (8%) of the frame width',
-    note: 'a tight, bold hero crop',
+    margin: 'about one-twentieth (5%) of the frame width',
+    note: 'a tight, bold hero crop — the car nearly touches the side edges',
   },
 };
 
 export const FRAMING_LEVELS = Object.keys(FRAMING_PRESETS);
 export const DEFAULT_FRAMING = 'large';
+
+/**
+ * The GUARANTEED car width (as a fraction of the output width) that the
+ * post-generation auto-frame enforces. The prompt margins above are a hint to
+ * the model; THIS is the promise to the client, applied deterministically after
+ * the render in autoFrame.service.js.
+ *
+ * Set deliberately large: the client rejected the output repeatedly for the car
+ * being too small, including in "hero" mode, which was actually landing at
+ * ~60–75%. These values (override with FRAMING_FILL_* env vars) are what finally
+ * make "large" and "hero" look like the guide images.
+ */
+export const FRAMING_FILL = {
+  standard: Number(process.env.FRAMING_FILL_STANDARD) || 0.82,
+  large: Number(process.env.FRAMING_FILL_LARGE) || 0.9,
+  hero: Number(process.env.FRAMING_FILL_HERO) || 0.95,
+};
 
 function composition(framing = DEFAULT_FRAMING) {
   const p = FRAMING_PRESETS[framing] || FRAMING_PRESETS[DEFAULT_FRAMING];
@@ -184,6 +201,9 @@ COMPOSITION — THE CAR IS THE PRODUCT, THE BACKGROUND IS ONLY THE STAGE:
   those margins.
 - Vertically: a small amount of headroom above the roof, and enough floor below the
   tyres to carry the shadow. The car should sit slightly below the centre line.
+- LEVEL THE SHOT: the finished image must be perfectly level and upright. If the
+  input was taken on a slight angle, correct it — the ground line is horizontal and
+  the car stands straight, not leaning. (Levelling only; do not change which way it faces.)
 - Centre the car horizontally. Keep the SAME viewpoint as IMAGE 1 — do not re-angle
   the car to make it "more flattering".
 - The background must read as a clean, quiet backdrop, never competing with the car.

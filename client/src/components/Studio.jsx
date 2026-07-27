@@ -12,6 +12,7 @@ import Inspector from './Inspector.jsx';
 import { ProgressBar } from './Loader.jsx';
 import { useProcess } from '../hooks/useProcess.js';
 import { downloadDataUrl } from '../utils/download.js';
+import { downloadZip } from '../utils/zip.js';
 import { APP_NAME, DEFAULT_FRAMING, DEFAULT_FORMAT } from '../constants/index.js';
 
 /**
@@ -23,6 +24,7 @@ export default function Studio() {
   const [section, setSection] = useState('photos');
 
   const [vehicles, setVehicles] = useState([]);
+  const [stocks, setStocks] = useState({}); // stock number by fileKey
   const [background, setBackground] = useState('studio'); // 'keep' | 'studio' | presetId
   const [colors, setColors] = useState([]); // optional recolour targets
   const [framing, setFraming] = useState(DEFAULT_FRAMING);
@@ -58,6 +60,7 @@ export default function Studio() {
   const handleReset = () => {
     reset();
     setVehicles([]);
+    setStocks({});
     setBackground('studio');
     setColors([]);
     setFraming(DEFAULT_FRAMING);
@@ -69,18 +72,26 @@ export default function Studio() {
 
   const handleGenerate = () => {
     setPickedKey(null);
-    run({ vehicles, background, colors, framing, format, notes });
+    run({ vehicles, background, colors, framing, format, notes, stocks });
   };
 
-  const downloadAll = () => {
-    results
-      .filter((r) => r.status === 'done' && r.image)
-      .forEach((r, i) =>
-        setTimeout(
-          () => downloadDataUrl(r.image, `${r.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`),
-          i * 250
-        )
+  const downloadAll = async () => {
+    const done = results.filter((r) => r.status === 'done' && r.image);
+    if (!done.length) return;
+    // One ZIP "folder", each image named by its stock number (client's request).
+    const entries = done.map((r) => ({
+      name: r.downloadName || r.name,
+      dataUrl: r.image,
+    }));
+    try {
+      await downloadZip(entries, 'autovision-images.zip');
+    } catch {
+      // If zipping fails for any reason, fall back to individual downloads so the
+      // work is never trapped in the browser.
+      done.forEach((r, i) =>
+        setTimeout(() => downloadDataUrl(r.image, `${r.downloadName || r.name}.png`), i * 250)
       );
+    }
   };
 
   return (
@@ -155,7 +166,15 @@ export default function Studio() {
                 background library or drop the upload previews. */}
             <div className="flex-1 overflow-y-auto p-4 lg:min-h-0">
               <div className={clsx(section !== 'photos' && 'hidden')}>
-                <MultiImageDropzone files={vehicles} onChange={setVehicles} disabled={isRunning} />
+                <MultiImageDropzone
+                  files={vehicles}
+                  onChange={setVehicles}
+                  stocks={stocks}
+                  onStockChange={(key, value) =>
+                    setStocks((prev) => ({ ...prev, [key]: value }))
+                  }
+                  disabled={isRunning}
+                />
               </div>
               <div className={clsx(section !== 'background' && 'hidden')}>
                 <BackgroundManager value={background} onChange={setBackground} disabled={isRunning} />
