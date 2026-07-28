@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Images, Mountain, Palette, Wand2, Loader2 } from 'lucide-react';
+import { Images, Mountain, Palette, BadgeCheck, Wand2, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import StudioRail from './StudioRail.jsx';
 import MultiImageDropzone from './MultiImageDropzone.jsx';
 import BackgroundManager from './BackgroundManager.jsx';
 import ColorPicker from './ColorPicker.jsx';
+import MarketingTag from './MarketingTag.jsx';
 import CanvasStage from './CanvasStage.jsx';
 import Filmstrip from './Filmstrip.jsx';
 import Inspector from './Inspector.jsx';
@@ -30,6 +31,7 @@ export default function Studio() {
   const [framing, setFraming] = useState(DEFAULT_FRAMING);
   const [format, setFormat] = useState(DEFAULT_FORMAT);
   const [notes, setNotes] = useState('');
+  const [tag, setTag] = useState({ style: 'none' }); // marketing warranty tag
 
   const [pickedKey, setPickedKey] = useState(null);
 
@@ -54,6 +56,7 @@ export default function Studio() {
     { id: 'photos', label: 'Vehicle photos', icon: Images, badge: vehicles.length },
     { id: 'background', label: 'Background', icon: Mountain },
     { id: 'colour', label: 'Paint colour', icon: Palette, badge: colors.length },
+    { id: 'tag', label: 'Marketing tag', icon: BadgeCheck, badge: tag.style !== 'none' ? 1 : 0 },
   ];
   const activeSection = SECTIONS.find((s) => s.id === section);
 
@@ -66,13 +69,14 @@ export default function Studio() {
     setFraming(DEFAULT_FRAMING);
     setFormat(DEFAULT_FORMAT);
     setNotes('');
+    setTag({ style: 'none' });
     setPickedKey(null);
     setSection('photos');
   };
 
   const handleGenerate = () => {
     setPickedKey(null);
-    run({ vehicles, background, colors, framing, format, notes, stocks });
+    run({ vehicles, background, colors, framing, format, notes, stocks, tag });
   };
 
   const downloadAll = async () => {
@@ -181,6 +185,9 @@ export default function Studio() {
               </div>
               <div className={clsx(section !== 'colour' && 'hidden')}>
                 <ColorPicker value={colors} onChange={setColors} disabled={isRunning} />
+              </div>
+              <div className={clsx(section !== 'tag' && 'hidden')}>
+                <MarketingTag value={tag} onChange={setTag} disabled={isRunning} />
               </div>
             </div>
           </aside>

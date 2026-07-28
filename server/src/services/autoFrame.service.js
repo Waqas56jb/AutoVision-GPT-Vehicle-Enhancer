@@ -53,8 +53,13 @@ export async function measureCarBox(imageBuffer) {
   const at = (x, y) => data[y * w + x];
 
   // Sobel gradient magnitude, accumulated into column and row energy profiles.
+  // `topRow` also records, per column, the first row with a strong edge — the
+  // car's silhouette top at that x. That lets a caller tell that the far corners
+  // above a low hood/boot are actually clear sky, which the bounding box cannot.
   const col = new Float64Array(w);
   const row = new Float64Array(h);
+  const colMax = new Float64Array(w);
+  const topRow = new Int16Array(w).fill(-1);
   let total = 0;
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
@@ -68,12 +73,34 @@ export async function measureCarBox(imageBuffer) {
       col[x] += m;
       row[y] += m;
       total += m;
+      if (m > colMax[x]) colMax[x] = m;
+    }
+  }
+  // A per-column edge threshold (fraction of that column's peak) marks the top.
+  for (let x = 1; x < w - 1; x++) {
+    const thr = colMax[x] * 0.35;
+    if (thr <= 0) continue;
+    for (let y = 1; y < h - 1; y++) {
+      const gx =
+        -at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1) +
+        at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1);
+      const gy =
+        -at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1) +
+        at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1);
+      if (Math.abs(gx) + Math.abs(gy) > thr) {
+        topRow[x] = y;
+        break;
+      }
     }
   }
 
   if (total <= 0) {
-    return { x: 0, y: 0, w: 1, h: 1, ok: false, reason: 'no edges found' };
+    return { x: 0, y: 0, w: 1, h: 1, ok: false, reason: 'no edges found', topEdge: [] };
   }
+
+  // Normalised top-edge profile: y-ratio of the car's silhouette top per column
+  // (1 = no car in that column, i.e. clear sky all the way down).
+  const topEdge = Array.from(topRow, (v) => (v < 0 ? 1 : v / h));
 
   // Trim `TRIM` of the total edge energy off each end of each axis. Whatever
   // survives in the middle is the car. Robust to sparse background edges
@@ -101,12 +128,34 @@ export async function measureCarBox(imageBuffer) {
 
   // Sanity gates — a measurement outside these is not a trustworthy whole-car box.
   if (box.w < MIN_BOX || box.h < MIN_BOX) {
-    return { ...box, ok: false, reason: `box too small (${(box.w * 100) | 0}×${(box.h * 100) | 0}%)` };
+    return { ...box, ok: false, reason: `box too small (${(box.w * 100) | 0}×${(box.h * 100) | 0}%)`, topEdge };
   }
   if (box.w > MAX_BOX && box.h > MAX_BOX) {
-    return { ...box, ok: false, reason: 'car already fills the frame' };
+    return { ...box, ok: false, reason: 'car already fills the frame', topEdge };
   }
-  return { ...box, ok: true, reason: 'ok' };
+  return { ...box, ok: true, reason: 'ok', topEdge };
+}
+
+/**
+ * The car's highest silhouette point (smallest top-edge y-ratio) within an
+ * x-range, from a box's topEdge profile. Returns 1 (fully clear) when there is
+ * no profile or no car in that range. Lets a caller tell that a top corner above
+ * a low hood or boot is clear sky even though the bounding box spans it.
+ *
+ * @param {{topEdge?:number[]}} box
+ * @param {number} x0  0..1
+ * @param {number} x1  0..1
+ * @returns {number} 0..1 (smaller = car reaches higher into that range)
+ */
+export function topEdgeInRange(box, x0, x1) {
+  const prof = box?.topEdge;
+  if (!prof || !prof.length) return 1;
+  const n = prof.length;
+  const a = Math.max(0, Math.floor(x0 * n));
+  const b = Math.min(n, Math.ceil(x1 * n));
+  let min = 1;
+  for (let i = a; i < b; i++) if (prof[i] < min) min = prof[i];
+  return min;
 }
 
 /**

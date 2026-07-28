@@ -4,7 +4,9 @@ import ApiError from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
 import { normaliseInput, describe, fromBase64, resizeTo } from '../services/image.service.js';
 import { enhanceVehicleImage } from '../services/openai.service.js';
-import { autoFrameToFill } from '../services/autoFrame.service.js';
+import { autoFrameToFill, measureCarBox } from '../services/autoFrame.service.js';
+import { detectBrand } from '../services/brandDetect.service.js';
+import { applyMarketingTag } from '../services/overlay.service.js';
 import { resolveBackgroundPath } from '../services/backgrounds.service.js';
 import { FRAMING_LEVELS, DEFAULT_FRAMING, FRAMING_FILL } from '../prompts/vehicleEnhancement.prompt.js';
 import { resolveFormat } from '../config/formats.js';
@@ -30,6 +32,14 @@ export const enhance = asyncHandler(async (req, res) => {
   // Optional controls (validated, with safe defaults).
   const framing = FRAMING_LEVELS.includes(req.body?.framing) ? req.body.framing : DEFAULT_FRAMING;
   const { key: format, preset } = resolveFormat(req.body?.format);
+
+  // Optional marketing warranty tag: 'none' | 'corner' | 'banner', with optional
+  // custom copy overriding the brand defaults.
+  const tagStyle = ['corner', 'banner'].includes(req.body?.tagStyle) ? req.body.tagStyle : 'none';
+  const clip = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
+  const tagTitle = clip(req.body?.tagTitle, 60);
+  const tagSubtitle = clip(req.body?.tagSubtitle, 90);
+  const tagFooter = clip(req.body?.tagFooter, 60);
 
   // Optional paint colour change.
   const colorName = typeof req.body?.colorName === 'string' ? req.body.colorName.trim() : '';
@@ -101,6 +111,31 @@ export const enhance = asyncHandler(async (req, res) => {
     finalBuf = await resizeTo(genBuf, outW, outH);
   }
 
+  /* Marketing warranty tag (optional). Only on exterior shots, and only when the
+     make can actually be read from the car — a wrong maker's name on a listing is
+     worse than none, so an unclear badge means no tag (the client's rule). The
+     corner style is placed away from the car using the measured box; if the car
+     occupies both top corners it falls back to the banner so nothing overlaps. */
+  let tagMeta = null;
+  if (tagStyle !== 'none' && result.shotType === 'exterior') {
+    const { brand, make, logoClear } = await detectBrand(vehicleBuffer);
+    if (brand) {
+      const carBox = await measureCarBox(finalBuf).catch(() => null);
+      const tagged = await applyMarketingTag(finalBuf, {
+        style: tagStyle,
+        brand,
+        title: tagTitle,
+        subtitle: tagSubtitle,
+        footer: tagFooter,
+        carBox,
+      });
+      finalBuf = tagged.buffer;
+      tagMeta = { brand: brand.name, style: tagStyle, placement: tagged.placement };
+    } else {
+      tagMeta = { brand: null, skipped: true, reason: `make "${make}" not clearly visible`, logoClear };
+    }
+  }
+
   const finalB64 = finalBuf.toString('base64');
   const finalSize = `${outW}x${outH}`;
 
@@ -127,6 +162,8 @@ export const enhance = asyncHandler(async (req, res) => {
         // and the car's final width as a fraction of the frame.
         autoFramed: framedApplied,
         fill: framedFill,
+        // Marketing tag outcome (null when none requested).
+        tag: tagMeta,
         colorName: result.colorName,
         colorHex: result.colorHex,
         elapsedMs,

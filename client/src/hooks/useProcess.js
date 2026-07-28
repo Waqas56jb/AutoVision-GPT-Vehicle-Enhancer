@@ -34,7 +34,7 @@ export function useProcess() {
      collects its own 429 — the batch degrades instead of throttling. */
   const cooldownUntil = useRef(0);
 
-  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes, stocks = {} }) => {
+  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes, stocks = {}, tag = {} }) => {
     if (!vehicles?.length) {
       toast.error('Add at least one vehicle photo.');
       return;
@@ -126,6 +126,10 @@ export function useProcess() {
             framing,
             format,
             notes,
+            tagStyle: tag.style,
+            tagTitle: tag.title,
+            tagSubtitle: tag.subtitle,
+            tagFooter: tag.footer,
           });
         } catch (err) {
           if (attempt >= MAX_ATTEMPTS || !isRetryable(err)) throw err;

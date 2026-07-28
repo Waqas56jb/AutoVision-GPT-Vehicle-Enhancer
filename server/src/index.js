@@ -1,3 +1,4 @@
+import './config/fonts.js'; // configure bundled fonts before any image rendering
 import config from './config/env.js';
 import { createApp } from './app.js';
 import logger from './utils/logger.js';
