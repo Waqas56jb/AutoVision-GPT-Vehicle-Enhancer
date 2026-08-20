@@ -18,7 +18,7 @@ export default function Filmstrip({ results, selectedKey, onSelect }) {
   const doneCount = results.filter((r) => r.status === 'done').length;
 
   return (
-    <div className="shrink-0 border-t border-brand-100 bg-white/80 px-4 py-3 backdrop-blur">
+    <div className="shrink-0 border-t border-brand-100 bg-white/80 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-ink-900/80">
       <div className="mb-2 flex items-center justify-between">
         <span className="micro">Batch</span>
         <span className="text-[11px] font-bold text-slate-500">
@@ -40,11 +40,13 @@ export default function Filmstrip({ results, selectedKey, onSelect }) {
               transition={{ duration: 0.3, delay: Math.min(i, 10) * 0.03 }}
               onClick={() => onSelect(r.key)}
               title={r.name}
+              aria-pressed={active}
+              aria-label={r.name}
               className={clsx(
                 'group relative aspect-[3/2] w-28 shrink-0 overflow-hidden rounded-xl border-2 transition duration-200',
                 active
                   ? 'border-brand-500 shadow-glow'
-                  : 'border-transparent opacity-70 hover:-translate-y-0.5 hover:opacity-100 hover:shadow-soft'
+                  : 'border-transparent opacity-70 hover:-translate-y-0.5 hover:opacity-100 hover:shadow-soft dark:opacity-60'
               )}
             >
               <img

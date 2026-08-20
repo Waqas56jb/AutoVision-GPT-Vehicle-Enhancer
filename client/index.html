@@ -7,12 +7,25 @@
     <meta name="theme-color" content="#f7faff" />
     <meta name="description" content="AutoVision GPT — AI-powered dealership-grade vehicle photo enhancement." />
     <title>AutoVision GPT — Vehicle Image Enhancer</title>
+    <script>
+      /* Apply persisted theme before first paint to avoid a light flash. */
+      try {
+        var t = JSON.parse(localStorage.getItem('autovision.theme') || '"light"');
+        if (t === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      } catch (e) {}
+    </script>
     <style>
       /* Painted before React boots, so the first frame is already on-theme
          instead of a white flash followed by a layout jump. */
       body {
         margin: 0;
         background: #f7faff;
+      }
+      html.dark body {
+        background: #0a1738;
       }
       #boot {
         position: fixed;
@@ -21,6 +34,9 @@
         place-items: center;
         background: #f7faff;
         transition: opacity 0.4s ease;
+      }
+      html.dark #boot {
+        background: #0a1738;
       }
       #boot.hide {
         opacity: 0;

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { enhanceImage } from '../api/enhance.api.js';
 import { compressImage } from '../utils/compressImage.js';
+import { backgroundToFile } from '../utils/backgroundStorage.js';
 import { BATCH_CONCURRENCY, MAX_ATTEMPTS, fileKey } from '../constants/index.js';
 
 /**
@@ -41,8 +42,13 @@ export function useProcess() {
     }
 
     // background is either 'keep' | 'studio' | <presetId>
-    const backgroundId = background !== 'keep' && background !== 'studio' ? background : undefined;
     const backgroundMode = background === 'keep' ? 'keep' : 'studio';
+    let backgroundId;
+    let backgroundFile;
+    if (background !== 'keep' && background !== 'studio') {
+      backgroundId = background;
+      backgroundFile = await backgroundToFile(background);
+    }
 
     // One entry per colour (or a single "no colour" pass).
     const colorPasses = colors && colors.length ? colors : [null];
@@ -72,8 +78,9 @@ export function useProcess() {
 
     cooldownUntil.current = 0;
     setIsRunning(true);
-    setResults(
-      jobs.map((j) => ({
+    setResults((prev) => {
+      prev.forEach((r) => r.originalUrl && URL.revokeObjectURL(r.originalUrl));
+      return jobs.map((j) => ({
         key: j.key,
         name: j.label,
         stock: j.stock,
@@ -84,8 +91,8 @@ export function useProcess() {
         image: null,
         meta: null,
         error: null,
-      }))
-    );
+      }));
+    });
 
     const lanes = Math.min(BATCH_CONCURRENCY, jobs.length);
     const toastId = toast.loading(
@@ -119,6 +126,7 @@ export function useProcess() {
         try {
           return await enhanceImage({
             vehicle,
+            background: backgroundFile,
             backgroundId,
             backgroundMode,
             colorName: job.color?.name,
@@ -167,7 +175,12 @@ export function useProcess() {
     toast.success('All images processed!', { id: toastId });
   }, []);
 
-  const reset = useCallback(() => setResults([]), []);
+  const reset = useCallback(() => {
+    setResults((prev) => {
+      prev.forEach((r) => r.originalUrl && URL.revokeObjectURL(r.originalUrl));
+      return [];
+    });
+  }, []);
 
   return { isRunning, results, run, reset };
 }

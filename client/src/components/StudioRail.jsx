@@ -13,7 +13,10 @@ import { Car } from 'lucide-react';
  */
 export default function StudioRail({ sections, active, onSelect }) {
   return (
-    <nav className="rail flex shrink-0 flex-row items-center gap-2 px-3 py-2.5 lg:h-full lg:w-[72px] lg:flex-col lg:px-0 lg:py-4">
+    <nav
+      className="rail flex shrink-0 flex-row items-center gap-2 overflow-x-auto px-3 py-2.5 lg:h-full lg:w-[72px] lg:flex-col lg:overflow-visible lg:px-0 lg:py-4"
+      aria-label="Studio sections"
+    >
       {/* Brand mark doubles as the rail's anchor. */}
       <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur">
         <Car className="h-5 w-5 text-white" />

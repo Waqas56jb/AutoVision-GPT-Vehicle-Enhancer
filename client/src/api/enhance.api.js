@@ -12,6 +12,7 @@ import apiClient from './client.js';
  */
 export async function enhanceImage({
   vehicle,
+  background,
   backgroundId,
   backgroundMode,
   colorName,
@@ -27,8 +28,11 @@ export async function enhanceImage({
 }) {
   const form = new FormData();
   form.append('vehicle', vehicle);
+  /* A File from IndexedDB wins over backgroundId so generate still works when
+     the server disk has forgotten the upload. */
+  if (background) form.append('background', background);
   if (backgroundId) form.append('backgroundId', backgroundId);
-  else if (backgroundMode) form.append('backgroundMode', backgroundMode);
+  else if (!background && backgroundMode) form.append('backgroundMode', backgroundMode);
   if (colorName) form.append('colorName', colorName);
   if (colorHex) form.append('colorHex', colorHex);
   if (notes) form.append('notes', notes);

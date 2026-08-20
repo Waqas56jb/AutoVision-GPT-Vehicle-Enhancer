@@ -18,6 +18,10 @@ body {
   @apply bg-canvas font-sans text-slate-700 antialiased;
 }
 
+html.dark body {
+  @apply bg-ink-950 text-slate-300;
+}
+
 @layer components {
   /* ── Workbench panes ──────────────────────────────────── */
 
@@ -27,7 +31,9 @@ body {
   }
   .rail-btn {
     @apply relative grid h-11 w-11 place-items-center rounded-xl transition duration-200
-           hover:bg-white/10 hover:text-white;
+           hover:bg-white/10 hover:text-white
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-white/70;
   }
   .rail-btn-active {
     @apply bg-white text-brand-700 shadow-glow hover:bg-white hover:text-brand-700;
@@ -35,14 +41,18 @@ body {
 
   /* Side panels flanking the stage. */
   .pane {
-    @apply border-brand-100/80 bg-white;
+    @apply border-brand-100/80 bg-white dark:border-white/10 dark:bg-ink-900;
   }
 
   /* The stage itself — a recessed blue well so the artwork pops off it. */
   .stage {
-    @apply bg-canvas-soft;
+    @apply bg-canvas-soft dark:bg-ink-950;
     background-image: radial-gradient(60% 60% at 50% 0%, rgba(59, 130, 246, 0.1), transparent 70%),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent 40%);
+  }
+  html.dark .stage {
+    background-image: radial-gradient(60% 60% at 50% 0%, rgba(59, 130, 246, 0.16), transparent 70%),
+      linear-gradient(to bottom, rgba(15, 32, 80, 0.55), transparent 45%);
   }
 
   /* ── Type ─────────────────────────────────────────────── */
@@ -50,22 +60,34 @@ body {
     @apply text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400;
   }
   .label {
-    @apply text-sm font-semibold text-slate-800;
+    @apply text-sm font-semibold text-slate-800 dark:text-slate-100;
   }
 
   /* ── Buttons ──────────────────────────────────────────── */
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl
-           bg-brand-gradient px-5 py-2.5 text-sm font-bold text-white shadow-glow
-           transition duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg
+    @apply relative inline-flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xl
+           bg-brand-gradient px-5 text-sm font-bold text-white shadow-glow
+           transition duration-200 hover:-translate-y-0.5 hover:shadow-glow-lg
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
            focus-visible:outline-brand-500 active:translate-y-0
            disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white
-           px-3.5 py-2 text-sm font-semibold text-slate-600 transition
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white
+           px-3.5 text-sm font-semibold text-slate-600 transition
            hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand-500
+           disabled:cursor-not-allowed disabled:opacity-50
+           dark:border-white/10 dark:bg-ink-800 dark:text-slate-200
+           dark:hover:border-brand-400/40 dark:hover:bg-white/5 dark:hover:text-white;
+  }
+  .btn-danger {
+    @apply relative inline-flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xl
+           bg-red-600 px-5 text-sm font-bold text-white shadow-soft
+           transition duration-200 hover:bg-red-500
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-red-500
            disabled:cursor-not-allowed disabled:opacity-50;
   }
 
@@ -73,23 +95,31 @@ body {
   .field {
     @apply w-full rounded-xl border border-brand-100 bg-white px-3.5 py-2.5 text-sm text-slate-700
            outline-none transition placeholder:text-slate-400
-           focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+           focus:border-brand-400 focus:ring-4 focus:ring-brand-100
+           disabled:cursor-not-allowed disabled:opacity-60
+           dark:border-white/10 dark:bg-ink-800 dark:text-slate-100
+           dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-500/20;
   }
 
   /* Selectable tile — shared by backgrounds, colours and segments. */
   .tile {
-    @apply rounded-xl border bg-white transition duration-200;
+    @apply rounded-xl border bg-white transition duration-200
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand-500
+           dark:bg-ink-800;
   }
   .tile-idle {
-    @apply border-brand-100 text-slate-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 hover:shadow-soft;
+    @apply border-brand-100 text-slate-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 hover:shadow-soft
+           dark:border-white/10 dark:text-slate-300 dark:hover:border-brand-400/40 dark:hover:bg-white/5;
   }
   .tile-active {
-    @apply border-brand-500 bg-brand-50 text-brand-800 shadow-glow ring-1 ring-brand-500;
+    @apply border-brand-500 bg-brand-50 text-brand-800 shadow-glow ring-1 ring-brand-500
+           dark:bg-brand-600/20 dark:text-brand-100;
   }
 
   /* Skeleton block with a light sweep — every loading placeholder uses this. */
   .skeleton {
-    @apply relative overflow-hidden bg-brand-50;
+    @apply relative overflow-hidden bg-brand-50 dark:bg-white/10;
   }
   .skeleton::after {
     content: '';
@@ -111,12 +141,15 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-brand-300 bg-clip-content;
 }
+html.dark ::-webkit-scrollbar-thumb {
+  @apply bg-white/20 bg-clip-content;
+}
 .rail ::-webkit-scrollbar-thumb {
   @apply bg-white/20 bg-clip-content;
 }
 
 ::selection {
-  @apply bg-brand-500/20 text-brand-900;
+  @apply bg-brand-500/20 text-brand-900 dark:text-white;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -36,7 +36,7 @@ export default function ProcessingPanel({ done, total }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="flex w-full max-w-sm flex-col items-center rounded-3xl border border-white bg-white/85 p-8 shadow-lift backdrop-blur-xl"
+      className="flex w-full max-w-sm flex-col items-center rounded-3xl border border-white bg-white/85 p-8 shadow-lift backdrop-blur-xl dark:border-white/10 dark:bg-ink-900/90"
     >
       <ProgressRing value={percent}>
         <Car className="mb-1 h-6 w-6 animate-float text-brand-600" />
@@ -48,10 +48,10 @@ export default function ProcessingPanel({ done, total }) {
         </span>
       </ProgressRing>
 
-      <h3 className="mt-6 text-lg font-extrabold tracking-tight text-slate-900">
+      <h3 className="mt-6 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
         Enhancing your vehicles
       </h3>
-      <p className="mt-1 text-center text-sm text-slate-500">
+      <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
         About a minute per image. Results appear below as they finish.
       </p>
 
@@ -65,7 +65,7 @@ export default function ProcessingPanel({ done, total }) {
               transition={{ duration: 0.3 }}
               className={clsx(
                 'flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-sm transition-colors',
-                state === 'active' ? 'bg-brand-50 font-semibold text-brand-800' : 'text-slate-500'
+                state === 'active' ? 'bg-brand-50 font-semibold text-brand-800 dark:bg-brand-600/20 dark:text-brand-100' : 'text-slate-500'
               )}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center">

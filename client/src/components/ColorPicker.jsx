@@ -44,6 +44,7 @@ export default function ColorPicker({ value, onChange, disabled }) {
         disabled={disabled}
         onClick={() => toggle(color)}
         title={color.name}
+        aria-pressed={selected}
         className={clsx(
           'tile flex items-center gap-2.5 px-3 py-2',
           selected ? 'tile-active' : 'tile-idle',
@@ -81,12 +82,16 @@ export default function ColorPicker({ value, onChange, disabled }) {
         <span
           className={clsx(
             'rounded-full px-2.5 py-1 text-xs font-medium transition',
-            value.length ? 'bg-brand-50 text-brand-700' : 'text-slate-400'
+            value.length ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-200' : 'text-slate-400'
           )}
         >
           {value.length ? `${value.length} selected` : 'keep original colour'}
         </span>
       </div>
+
+      <p className="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+        Optional. Selected colours replace the original paint for this run — they do not also keep a copy in the source colour.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         {PRIMARY_COLORS.map((c) => (
@@ -115,7 +120,7 @@ export default function ColorPicker({ value, onChange, disabled }) {
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="panel mt-3 space-y-3 p-3.5">
+            <div className="panel mt-3 space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 dark:border-white/10 dark:bg-ink-800">
               <div className="flex flex-wrap gap-2">
                 {MORE_COLORS.map((c) => (
                   <Swatch key={c.key} color={c} />
@@ -123,14 +128,15 @@ export default function ColorPicker({ value, onChange, disabled }) {
               </div>
 
               {/* Custom colour */}
-              <div className="flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3">
+              <div className="flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3 dark:border-white/10">
                 <input
                   type="color"
                   value={customHex}
                   disabled={disabled}
                   onChange={(e) => setCustomHex(e.target.value)}
-                  className="h-10 w-12 cursor-pointer rounded-xl border border-brand-100 bg-white p-1 shadow-soft"
+                  className="h-10 w-12 cursor-pointer rounded-xl border border-brand-100 bg-white p-1 shadow-soft dark:border-white/10 dark:bg-ink-800"
                   title="Pick a custom colour"
+                  aria-label="Custom colour"
                 />
                 <input
                   type="text"
@@ -164,7 +170,7 @@ export default function ColorPicker({ value, onChange, disabled }) {
                 type="button"
                 disabled={disabled}
                 onClick={() => onChange(value.filter((v) => v.key !== c.key))}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-soft transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-soft transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-white/10 dark:bg-ink-800 dark:text-slate-200 dark:hover:border-red-400/40 dark:hover:bg-red-950/40"
                 title="Remove"
               >
                 <span

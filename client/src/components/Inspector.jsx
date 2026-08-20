@@ -22,9 +22,9 @@ export default function Inspector({
 }) {
   return (
     <aside className="pane flex w-full shrink-0 flex-col border-t lg:h-full lg:w-[300px] lg:border-l lg:border-t-0">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-brand-100 px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-brand-100 px-4 dark:border-white/10">
         <Sliders className="h-4 w-4 text-brand-600" />
-        <h2 className="text-sm font-extrabold tracking-tight text-slate-900">Output</h2>
+        <h2 className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Output</h2>
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto p-4 lg:min-h-0">
@@ -53,14 +53,14 @@ export default function Inspector({
             onChange={(e) => onNotes(e.target.value)}
             disabled={disabled}
             rows={4}
-            placeholder="e.g. remove the number plate, keep the black roof, warmer tone…"
+            placeholder="e.g. keep the black roof, warmer tone, do not relight…"
             className="field resize-none"
           />
         </div>
       </div>
 
       {hasResults && (
-        <footer className="shrink-0 space-y-2 border-t border-brand-100 bg-canvas p-4">
+        <footer className="shrink-0 space-y-2 border-t border-brand-100 bg-canvas p-4 dark:border-white/10 dark:bg-ink-950">
           <button
             type="button"
             onClick={onDownloadAll}

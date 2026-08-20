@@ -28,15 +28,41 @@ import logger from '../utils/logger.js';
 export const SHOT_TYPES = ['exterior', 'interior', 'detail'];
 export const DEFAULT_SHOT = 'exterior';
 
-const PROMPT = `You are sorting photos from a car dealership's listing.
+const PROMPT = `Classify IMAGE 1 as exactly one of: exterior, interior, detail.
 
-Reply with EXACTLY ONE word:
+IMPORTANT: classify by the PHYSICAL SUBJECT AND FRAMING, not by what is displayed inside a screen.
 
-exterior — the whole vehicle (or nearly all of it) is visible from outside: shot in a street, driveway, car park or showroom. The complete car body is the subject.
-interior — a view from inside the cabin: dashboard, seats, boot/cargo area, footwell, or a wide view of the cabin.
-detail   — a close-up of ONE PART of the car: a wheel, a badge or lettering, a headlight, a mirror, a door handle, a button, a switch, a screen, a gear selector, a steering wheel.
+A DIGITAL DISPLAY IS NEVER A WINDOW.
+A backup-camera feed, navigation map, radio/media UI, vehicle settings UI, warning message, parking-camera image, or any other image/video shown on an infotainment or instrument display is part of the VEHICLE HARDWARE and must NOT be interpreted as a real window or an opening to the outside.
 
-If you cannot see the whole car body, it is NOT exterior.`;
+Classify as DETAIL when IMAGE 1 is a tight crop focused on a specific vehicle component or feature, including:
+- infotainment/display screen
+- radio/media controls
+- HVAC controls
+- buttons, knobs, switches
+- instrument cluster
+- steering controls
+- gear selector
+- trim, badges, stitching, vents, handles, or other small vehicle details
+- any close-up where the surrounding cabin is substantially outside the crop
+
+A screen close-up remains DETAIL even when the screen itself shows an outdoor scene, parking lot, road, grass, buildings, or a camera feed.
+
+Classify as INTERIOR only when IMAGE 1 actually shows a meaningful portion of the physical vehicle cabin/interior, such as seats, dashboard, steering wheel, cabin structure, door panels, pillars, or REAL vehicle windows.
+
+A REAL WINDOW must be physically identifiable as a window/opening in the vehicle structure, with surrounding physical boundaries such as glass, frame, pillar, seal, trim, or door structure. A glowing rectangle, LCD/OLED display, infotainment screen, backup-camera display, or navigation display does NOT qualify.
+
+If there is no real vehicle window visible in IMAGE 1, do not classify the image as having a window merely because a display contains an exterior scene.
+
+Classify as EXTERIOR only when the physical subject is primarily the outside of the vehicle.
+
+HARD RULE:
+Preserve the actual framing when deciding the shot type. Do not infer missing cabin parts. If IMAGE 1 is a tight screen/control crop and contains no steering wheel, seats, windshield, side window, or wider dashboard, classify it as DETAIL.
+
+Return only one word:
+exterior
+interior
+detail`;
 
 /**
  * @param {Buffer} imageBuffer  the vehicle photo as uploaded (normalised)

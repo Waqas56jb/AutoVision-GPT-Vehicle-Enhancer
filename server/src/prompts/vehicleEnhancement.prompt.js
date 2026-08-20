@@ -322,45 +322,65 @@ OUTPUT: the same scene and framing, enhanced${colorName ? ` and recoloured to ${
  *
  * The client's ask: "when there is glass in the background, can we have the
  * showroom that is showing?" So the cabin is left completely alone and ONLY the
- * view through the windows is replaced. Getting greedy here — "improving" the
- * dashboard — would wreck the shot.
+ * view through REAL windows is replaced. Digital displays (backup camera, maps)
+ * are hardware, not windows — treating them as glass made gpt-image-1 paste the
+ * showroom into the LED and invent a steering wheel around a screen close-up.
  */
 export function buildInteriorPrompt(opts = {}) {
   const { notes, hasBackground } = opts;
-  const throughGlass = hasBackground
-    ? `the showroom scene from IMAGE 2`
-    : `a clean, bright, upmarket car-dealership showroom: glass facade, polished floor, soft daylight`;
+  const image2Block = hasBackground
+    ? `IMAGE 2 is the dealership/showroom reference. Use it only where a REAL physical window view exists in IMAGE 1. Never use IMAGE 2 to invent missing cabin geometry or expand the crop.`
+    : `There is no IMAGE 2. Where a REAL physical window already exists in IMAGE 1, the outside view may become a clean, bright, upmarket car-dealership showroom (glass facade, polished floor, soft daylight), softly defocused. If no real window exists, change no view.`;
 
   return `${`
-You are an expert automotive retoucher finishing an INTERIOR photo of a car for a
-dealership listing.
+IMAGE 1 = source vehicle image.
 
-TASK: Keep the cabin EXACTLY as photographed. Change ONLY what can be seen OUTSIDE the
-car through its windows and glass.
+Create an interior dealership/showroom version while preserving IMAGE 1 as the physical source of truth.
 
-RULE ZERO — THE CABIN MUST NOT CHANGE:
-- The dashboard, screens, steering wheel, seats, trim, stitching, buttons, switches,
-  vents, gear selector and boot lining must be IDENTICAL to IMAGE 1.
-- Whatever is displayed on the infotainment screen and instrument cluster stays exactly
-  as it is. Do not re-render, re-word or "tidy" the screens.
-- Do not change materials, colours, textures or the layout of any control.
-- Do not change the camera angle or re-frame the shot. Same viewpoint, same crop.
+CRITICAL SCREEN/WINDOW RULE:
+A DIGITAL DISPLAY IS NOT A WINDOW.
 
-REPLACE ONLY THE VIEW THROUGH THE GLASS:
-- Wherever the outside world is visible through the windscreen, side windows, rear
-  window or open boot — replace that view with ${throughGlass}.
-- Remove the street, other cars, houses, trees, signs and sky that currently show
-  through the glass.
-- The view outside must be DEFOCUSED and softly blurred, as it genuinely would be when
-  the camera is focused on the dashboard. It must sit behind the glass, not on top of it.
-- Keep the glass reading as glass: preserve its reflections, tint and any window frame,
-  pillar or seal in front of it.
-- Match the outside light to the cabin's existing exposure so it does not look pasted in.
+Every infotainment screen, LCD, LED display, instrument display, backup-camera display, navigation display, radio/media screen, or other digital display visible in IMAGE 1 is VEHICLE HARDWARE. NEVER replace, repaint, reinterpret, or composite the showroom into a digital display.
 
-CLEAN-UP: remove dust, smudges, fingerprints, watermarks and any overlaid text.
+Digital displays must remain visually identical to IMAGE 1:
+- same screen location
+- same shape and dimensions
+- same bezel
+- same buttons and controls
+- same displayed content
+- same backup-camera feed
+- same parking guidelines
+- same text/UI
+- same brightness/appearance
+- no showroom reflection or showroom scene inserted into the display
 
-OUTPUT: the same interior photo, same angle, same crop — now looking like it was taken
-inside the dealership.
+ONLY a PHYSICAL REAL WINDOW may receive a changed outside view.
+
+A real window must be identifiable from the physical vehicle structure: glass/opening plus surrounding frame, pillar, seal, trim, or door structure. Do not infer a window merely because a rectangular area displays an outdoor-looking image.
+
+If IMAGE 1 contains no identifiable real window, DO NOT ADD ONE and DO NOT CHANGE ANY DISPLAY CONTENT. Perform only appropriate interior/showroom cleanup.
+
+FRAMING IS LOCKED:
+Preserve the exact crop, camera viewpoint, perspective, field of view, and visible vehicle geometry from IMAGE 1.
+
+Do NOT zoom out.
+Do NOT widen the shot.
+Do NOT reconstruct the cabin.
+Do NOT invent missing vehicle components.
+Do NOT add a steering wheel, seats, windshield, side windows, mirrors, dashboard sections, doors, pillars, or other cabin elements that are outside the IMAGE 1 crop.
+
+If IMAGE 1 is a close-up of an infotainment stack or other component, keep it a close-up of that exact component. Do not turn it into a wide interior photograph.
+
+Only modify the outside view through REAL windows that are already physically visible in IMAGE 1. Keep all vehicle hardware and interior geometry unchanged.
+
+${image2Block}
+
+Priority order:
+1. Preserve IMAGE 1 physical geometry and crop.
+2. Preserve all digital displays exactly.
+3. Change only the outside view through already-visible REAL windows.
+4. If no real window exists, make no window/view replacement.
+5. Never invent missing cabin elements.
 `.trim()}${dealerNotes(notes)}`;
 }
 
@@ -385,6 +405,23 @@ RULE ZERO — THE SUBJECT MUST NOT CHANGE:
 - Wheel and rim design, spoke count, tyre sidewall text and brake caliper: identical.
 - Do NOT replace or regenerate the background. Do NOT re-frame, re-angle or re-crop.
 - Do NOT invent detail that is not in the photograph.
+
+SCREEN/DISPLAY HARD LOCK:
+All digital displays in IMAGE 1 are immutable vehicle hardware, NOT windows.
+This includes infotainment screens, LCD/LED displays, backup-camera feeds, navigation
+screens, radio/media UI, parking-camera images, warning messages, maps, instrument
+displays, and any other electronically displayed image.
+Preserve every visible digital display exactly as shown in IMAGE 1, including its
+displayed scene/content, text, icons, parking guidelines, colors, controls, bezel,
+reflections, and geometry.
+NEVER replace the image shown on a screen with a showroom, dealership, exterior scene,
+or invented environment.
+A screen displaying grass, parked cars, roads, buildings, or any other outdoor-looking
+image is STILL A DIGITAL DISPLAY and MUST NOT be treated as a physical window.
+For detail shots, preserve the exact crop and camera framing. Do not zoom out, widen,
+reconstruct, or invent surrounding cabin geometry. If IMAGE 1 does not show a steering
+wheel, seats, windshield, side window, mirror, or additional dashboard area, do not
+add them. Clean/improve only the actual visible detail. Invent nothing.
 
 CLEAN UP ONLY:
 - Reduce harsh glare and blown-out hotspots; keep natural gloss and metallic sheen.

@@ -75,8 +75,8 @@ export default function MultiImageDropzone({ files, onChange, stocks = {}, onSto
         className={clsx(
           'group relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed p-5 text-center transition duration-300',
           isDragActive
-            ? 'scale-[1.01] border-brand-500 bg-brand-50 shadow-glow'
-            : 'border-brand-200 bg-white/60 hover:border-brand-400 hover:bg-brand-50/50',
+            ? 'scale-[1.01] border-brand-500 bg-brand-50 shadow-glow dark:bg-brand-600/20'
+            : 'border-brand-200 bg-white/60 hover:border-brand-400 hover:bg-brand-50/50 dark:border-white/15 dark:bg-ink-800/60 dark:hover:border-brand-400/50',
           disabled && 'pointer-events-none opacity-60'
         )}
       >
@@ -117,7 +117,7 @@ export default function MultiImageDropzone({ files, onChange, stocks = {}, onSto
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden rounded-xl border border-brand-100 bg-white shadow-soft"
+                    className="overflow-hidden rounded-xl border border-brand-100 bg-white shadow-soft dark:border-white/10 dark:bg-ink-800"
                   >
                     <div className="group relative aspect-[4/3] overflow-hidden bg-brand-50">
                       {previews[i] && (
@@ -145,8 +145,9 @@ export default function MultiImageDropzone({ files, onChange, stocks = {}, onSto
                       disabled={disabled}
                       onChange={(e) => onStockChange?.(key, e.target.value)}
                       placeholder="Stock #"
+                      aria-label={`Stock number for ${f.name}`}
                       title="Stock number — used as the file name on download"
-                      className="w-full border-0 border-t border-brand-50 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:bg-brand-50/60"
+                      className="w-full border-0 border-t border-brand-50 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:bg-brand-50/60 dark:border-white/10 dark:bg-ink-800 dark:text-slate-100 dark:focus:bg-white/5"
                     />
                   </motion.div>
                 );
@@ -158,7 +159,7 @@ export default function MultiImageDropzone({ files, onChange, stocks = {}, onSto
               type="button"
               onClick={open}
               disabled={disabled}
-              className="flex aspect-[4/3] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 text-xs font-medium text-brand-500 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60"
+              className="flex aspect-[4/3] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 text-xs font-medium text-brand-500 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60 dark:border-white/15 dark:bg-ink-800/60 dark:hover:bg-white/5"
             >
               <ImagePlus className="h-5 w-5" />
               Add more

@@ -38,6 +38,7 @@ export default function MarketingTag({ value, onChange, disabled }) {
               type="button"
               disabled={disabled}
               onClick={() => set({ style: v })}
+              aria-pressed={on}
               className={clsx(
                 'tile flex items-center gap-3 px-3 py-2.5 text-left',
                 on ? 'tile-active' : 'tile-idle',
@@ -63,7 +64,7 @@ export default function MarketingTag({ value, onChange, disabled }) {
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <p className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-[11px] leading-relaxed text-slate-600">
+            <p className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-[11px] leading-relaxed text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
               The manufacturer is detected from each car automatically. If a car's badge
               isn't clearly visible, its tag is skipped — never guessed.
             </p>

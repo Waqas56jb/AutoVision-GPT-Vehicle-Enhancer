@@ -39,9 +39,9 @@ export const MAX_ATTEMPTS = 4;
 
 /** How much of the frame the vehicle should fill (sent to the backend). */
 export const FRAMING_OPTIONS = [
-  { value: 'standard', label: 'Standard', hint: 'Car ~75% of frame' },
-  { value: 'large', label: 'Large', hint: 'Car ~82% (recommended)' },
-  { value: 'hero', label: 'Hero', hint: 'Tight crop, car ~90%' },
+  { value: 'standard', label: 'Standard', hint: 'Car ~82% of frame' },
+  { value: 'large', label: 'Large', hint: 'Car ~90% (recommended)' },
+  { value: 'hero', label: 'Hero', hint: 'Tight crop, car ~95%' },
 ];
 export const DEFAULT_FRAMING = 'large';
 
@@ -53,6 +53,14 @@ export const FORMAT_OPTIONS = [
   { value: 'portrait', label: 'Portrait', hint: '1024×1536 · Stories' },
 ];
 export const DEFAULT_FORMAT = 'carsales';
+
+/** Stage preview aspect — matches the chosen output format. */
+export const FORMAT_ASPECT = {
+  carsales: 'aspect-[3/2]',
+  landscape: 'aspect-[3/2]',
+  square: 'aspect-square',
+  portrait: 'aspect-[2/3]',
+};
 
 /**
  * Vehicle paint colours for the Colour Change mode.
