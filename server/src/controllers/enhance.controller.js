@@ -93,8 +93,12 @@ export const enhance = asyncHandler(async (req, res) => {
   let finalBuf;
   let framedApplied = false;
   let framedFill = null;
+  const skipped = Boolean(result.skipped) || result.shotType === 'skip';
 
-  if (result.shotType === 'exterior') {
+  if (skipped) {
+    // Non-vehicle input: original pixels only. No resize, crop-zoom, or tag.
+    finalBuf = genBuf;
+  } else if (result.shotType === 'exterior') {
     /* The car's size is GUARANTEED here, not left to the model. We measure where
        the car landed in the render and crop-zoom it to the target fill. This is
        the fix for the client's repeated "car is too small / even hero too small"
@@ -137,7 +141,8 @@ export const enhance = asyncHandler(async (req, res) => {
   }
 
   const finalB64 = finalBuf.toString('base64');
-  const finalSize = `${outW}x${outH}`;
+  const delivered = skipped ? await describe(finalBuf) : { width: outW, height: outH };
+  const finalSize = `${delivered.width}x${delivered.height}`;
 
   const elapsedMs = Date.now() - startedAt;
   logger.success(`Enhancement complete in ${elapsedMs}ms (delivered ${finalSize})`);
@@ -148,9 +153,9 @@ export const enhance = asyncHandler(async (req, res) => {
       image: `data:image/png;base64,${finalB64}`,
       meta: {
         model: result.model,
-        // Which brief ran: exterior / interior / detail. Surfaced so a bad
-        // classification is visible rather than a silent mystery.
+        // Which brief ran: exterior / interior / detail / skip.
         shotType: result.shotType,
+        skipped,
         generatedSize: result.size,
         size: finalSize,
         format,

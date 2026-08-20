@@ -13,6 +13,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { HARD_INPUT_SAFETY_RULES } from './vehicleEnhancement.prompt.js';
+
 /** Things that must remain pixel-faithful to the source template. */
 const PRESERVE_RULES = `
 PRESERVE EXACTLY — do NOT alter, move, redraw or re-render any of these:
@@ -55,6 +57,8 @@ RECOLOUR — change ONLY the painted body panels to the new colour:
  */
 export function buildRecolorPrompt({ colorName, colorHex, notes } = {}) {
   const base = `
+${HARD_INPUT_SAFETY_RULES}
+
 You are an expert automotive retoucher performing a precise, photorealistic
 PAINT COLOUR CHANGE on a finished advertising image.
 

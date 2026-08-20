@@ -10,59 +10,100 @@ import logger from '../utils/logger.js';
  * cannot serve all of them:
  *
  *   exterior — the whole car. Cut it out, drop it on the chosen background.
- *   interior — dashboard, seats, boot. Keep the cabin; only the view THROUGH the
- *              glass becomes the showroom. (This is what the client asked for:
- *              "when there is glass in the background, can we have the showroom
- *              that is showing?")
- *   detail   — a wheel, a badge, a headlight, a switch. There is no background to
- *              replace. Clean it up and change nothing else.
+ *   interior — dashboard, seats, boot. Keep the cabin; only REAL windows change.
+ *   detail   — a wheel, a badge, a screen close-up. Clean up only.
+ *   skip     — NOT a vehicle photo (empty showroom, cartoon, random object).
+ *              Do not run gpt-image-1. Return the original.
  *
- * Running the exterior prompt over a dashboard photo is how you get nonsense, so
- * this call is cheap insurance: a downscaled thumbnail, one word back, a fraction
- * of a cent. It never touches the delivered pixels — it only picks the prompt.
+ * skip is a hard precondition: no vehicle evidence in IMAGE 1 means no edit.
+ * Classifier failure also skips — compositing a non-car as a car is worse than
+ * leaving it alone.
  *
- * If it fails for any reason we fall back to 'exterior', which is both the most
- * common case and the app's previous behaviour.
+ * Tests (physical subject of IMAGE 1, not what a screen displays):
+ *   empty showroom / lobby, no vehicle          → skip
+ *   chibi robot on black, no vehicle hardware   → skip
+ *   real Kia centre-stack / infotainment bezel  → detail
+ *     (even if the LED shows that same robot)
  */
 
-export const SHOT_TYPES = ['exterior', 'interior', 'detail'];
-export const DEFAULT_SHOT = 'exterior';
+export const SHOT_TYPES = ['exterior', 'interior', 'detail', 'skip'];
+export const DEFAULT_SHOT = 'skip';
 
-const PROMPT = `Classify IMAGE 1 as exactly one of: exterior, interior, detail.
+const PROMPT = `You are the shot-type classifier for AutoVision GPT.
 
-IMPORTANT: classify by the PHYSICAL SUBJECT AND FRAMING, not by what is displayed inside a screen.
 
-A DIGITAL DISPLAY IS NEVER A WINDOW.
-A backup-camera feed, navigation map, radio/media UI, vehicle settings UI, warning message, parking-camera image, or any other image/video shown on an infotainment or instrument display is part of the VEHICLE HARDWARE and must NOT be interpreted as a real window or an opening to the outside.
+BACKGROUND PLATE RULE:
+If IMAGE 1 is an empty scene intended to be a background/showroom plate, return skip.
+IMAGE 2 is allowed to be a background plate, but IMAGE 1 must independently contain the real vehicle before any vehicle editing is allowed.
 
-Classify as DETAIL when IMAGE 1 is a tight crop focused on a specific vehicle component or feature, including:
-- infotainment/display screen
-- radio/media controls
-- HVAC controls
-- buttons, knobs, switches
-- instrument cluster
-- steering controls
-- gear selector
-- trim, badges, stitching, vents, handles, or other small vehicle details
-- any close-up where the surrounding cabin is substantially outside the crop
 
-A screen close-up remains DETAIL even when the screen itself shows an outdoor scene, parking lot, road, grass, buildings, or a camera feed.
+REAL VEHICLE EVIDENCE:
+Accept exterior/interior/detail only when actual physical vehicle evidence is visible, such as:
+- real body panels
+- real wheels/tires
+- real mirrors
+- real lights
+- real grille
+- real badges attached to a vehicle
+- real doors
+- real seats
+- real dashboard
+- real steering wheel
+- real center console
+- real physical buttons/knobs
+- real infotainment hardware
+- real instrument cluster
+- real trim
+- real vehicle window/door structure
 
-Classify as INTERIOR only when IMAGE 1 actually shows a meaningful portion of the physical vehicle cabin/interior, such as seats, dashboard, steering wheel, cabin structure, door panels, pillars, or REAL vehicle windows.
 
-A REAL WINDOW must be physically identifiable as a window/opening in the vehicle structure, with surrounding physical boundaries such as glass, frame, pillar, seal, trim, or door structure. A glowing rectangle, LCD/OLED display, infotainment screen, backup-camera display, or navigation display does NOT qualify.
+EXTERIOR:
+Use exterior when the real physical subject is primarily the outside of a vehicle.
 
-If there is no real vehicle window visible in IMAGE 1, do not classify the image as having a window merely because a display contains an exterior scene.
 
-Classify as EXTERIOR only when the physical subject is primarily the outside of the vehicle.
+INTERIOR:
+Use interior when the real physical subject is a meaningful view of the vehicle cabin/interior, including actual dashboard, seats, steering wheel, console, door panels, pillars, or other physical cabin structure.
 
-HARD RULE:
-Preserve the actual framing when deciding the shot type. Do not infer missing cabin parts. If IMAGE 1 is a tight screen/control crop and contains no steering wheel, seats, windshield, side window, or wider dashboard, classify it as DETAIL.
 
-Return only one word:
+DETAIL:
+Use detail when IMAGE 1 is a close-up of a REAL vehicle or REAL vehicle component.
+
+
+A real infotainment/LED/display close-up is DETAIL even if the display content shows:
+- a robot
+- a cartoon
+- grass
+- parked cars
+- a road
+- a showroom/lobby
+- a map
+- any other image or video
+
+
+The content displayed ON a real vehicle screen does not determine the shot type. The physical screen, bezel, buttons, knobs, and surrounding vehicle hardware do.
+
+
+A cartoon/robot BY ITSELF is skip.
+A cartoon/robot DISPLAYED ON REAL VEHICLE HARDWARE is detail.
+
+
+DO NOT infer missing vehicle context.
+DO NOT treat an empty room as a cabin.
+DO NOT treat an illustration as a vehicle part.
+DO NOT treat a background plate as an exterior listing photo.
+
+
+Decision priority:
+1. Is there real vehicle or real vehicle-part evidence?
+2. If NO → skip.
+3. If YES → classify exterior, interior, or detail based on the physical vehicle subject.
+
+
+Return EXACTLY ONE WORD and nothing else:
 exterior
 interior
-detail`;
+detail
+skip`;
 
 /**
  * @param {Buffer} imageBuffer  the vehicle photo as uploaded (normalised)
@@ -70,7 +111,6 @@ detail`;
  */
 export async function detectShotType(imageBuffer) {
   try {
-    // Downscale hard — the model only needs the gist, and this keeps it cheap.
     const thumb = await sharp(imageBuffer)
       .resize(512, 512, { fit: 'inside' })
       .jpeg({ quality: 70 })
@@ -78,7 +118,7 @@ export async function detectShotType(imageBuffer) {
 
     const res = await openai.chat.completions.create({
       model: config.openai.visionModel,
-      max_tokens: 5,
+      max_tokens: 8,
       temperature: 0,
       messages: [
         {
@@ -97,16 +137,17 @@ export async function detectShotType(imageBuffer) {
       ],
     });
 
-    const word = (res.choices?.[0]?.message?.content || '').trim().toLowerCase();
-    const type = SHOT_TYPES.find((t) => word.startsWith(t));
+    const raw = (res.choices?.[0]?.message?.content || '').trim().toLowerCase();
+    const compact = raw.replace(/[^a-z]/g, '');
+    const type = SHOT_TYPES.find((t) => compact === t || compact.startsWith(t));
 
     if (!type) {
-      logger.warn(`Shot classifier returned "${word}" — defaulting to ${DEFAULT_SHOT}.`);
-      return { type: DEFAULT_SHOT, source: 'fallback', reason: `unrecognised answer "${word}"` };
+      logger.warn(`Shot classifier returned "${raw}" — skipping (not treating as a car).`);
+      return { type: DEFAULT_SHOT, source: 'fallback', reason: `unrecognised answer "${raw}"` };
     }
     return { type, source: 'vision', reason: `classified as ${type}` };
   } catch (err) {
-    logger.warn(`Shot classifier unavailable (${err?.message}) — defaulting to ${DEFAULT_SHOT}.`);
+    logger.warn(`Shot classifier unavailable (${err?.message}) — skipping rather than inventing a car.`);
     return { type: DEFAULT_SHOT, source: 'fallback', reason: err?.message || 'classifier failed' };
   }
 }

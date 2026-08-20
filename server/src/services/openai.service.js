@@ -99,8 +99,25 @@ export async function enhanceVehicleImage({
   /* Which KIND of photo is this? A dealer listing is mostly interior and detail
      shots — running the exterior prompt over a dashboard is how you end up with
      a steering wheel parked on a showroom floor. One cheap vision call picks the
-     right brief. Falls back to 'exterior' (the old behaviour) if it can't tell. */
+     right brief. skip is a hard gate: no vehicle evidence means no images.edit. */
   const shot = await detectShotType(vehicleBuffer);
+
+  if (shot.type === 'skip') {
+    logger.info(`Skipping image edit — shot=skip (${shot.reason}). Returning original.`);
+    return {
+      b64: vehicleBuffer.toString('base64'),
+      shotType: 'skip',
+      skipped: true,
+      model: 'passthrough',
+      size: outputSize,
+      quality: 'original',
+      usedBackground: false,
+      mode: 'skip',
+      framing: framing || 'default',
+      colorName: null,
+      colorHex: null,
+    };
+  }
 
   let prompt;
   if (shot.type === 'interior') {

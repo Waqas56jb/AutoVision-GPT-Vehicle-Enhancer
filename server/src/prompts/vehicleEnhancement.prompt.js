@@ -38,6 +38,31 @@
  */
 
 /**
+ * Prepended to every gpt-image-1 edit prompt. Classifier skip is the hard gate
+ * (no edit call at all); this is the safety net if a non-vehicle still reaches
+ * the model, or if IMAGE 2 tempts it to invent a car.
+ */
+export const HARD_INPUT_SAFETY_RULES = `
+HARD INPUT SAFETY RULES — IMAGE 1 IS THE SOURCE OF TRUTH.
+
+
+1. If IMAGE 1 contains no real vehicle or real physical vehicle part, reproduce IMAGE 1 unchanged.
+2. Never invent a vehicle merely because IMAGE 2 is provided.
+3. Never turn an empty showroom, room, building, or background plate into a vehicle interior.
+4. Never invent wheels, tires, steering wheels, dashboards, cabins, mirrors, seats, LEDs, screens, or vehicle bodywork.
+5. Never turn a robot, cartoon, illustration, logo, meme, or graphic into a vehicle or vehicle detail.
+6. A robot/cartoon shown ON a real vehicle screen is screen content, not evidence of a standalone non-vehicle image.
+7. A real vehicle infotainment/display close-up remains a vehicle DETAIL regardless of what the screen displays.
+8. Never use IMAGE 2 to create a missing vehicle; IMAGE 2 is only an optional background plate for an already-visible real vehicle.
+9. If there is no real vehicle evidence in IMAGE 1, perform ZERO visual edits and preserve the original pixels.
+10. When uncertain whether a vehicle is actually present, preserve IMAGE 1 unchanged rather than inventing vehicle context.
+`.trim();
+
+function withInputSafety(body) {
+  return `${HARD_INPUT_SAFETY_RULES}\n\n${body}`;
+}
+
+/**
  * The rules that keep the advertised car the same car that is for sale.
  * Deliberately blunt: this is a legal and commercial constraint, not a taste one.
  */
@@ -241,7 +266,7 @@ export function buildVehicleEnhancementPrompt(opts = {}) {
   const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
   const clause = recolorClause(colorName, colorHex);
 
-  return `${`
+  return withInputSafety(`${`
 You are an expert automotive retoucher preparing a dealership advertisement.
 
 TASK: Take the vehicle in IMAGE 1, cut it cleanly out of its surroundings, and place
@@ -256,7 +281,7 @@ ${INTEGRATION_RULES}
 
 ${composition(framing)}
 ${clause ? `\n${clause}\n` : ''}
-`.trim()}${dealerNotes(notes)}`;
+`.trim()}${dealerNotes(notes)}`);
 }
 
 /**
@@ -266,7 +291,7 @@ export function buildStudioEnhancementPrompt(opts = {}) {
   const { notes, framing = DEFAULT_FRAMING, colorName, colorHex } = opts;
   const clause = recolorClause(colorName, colorHex);
 
-  return `${`
+  return withInputSafety(`${`
 You are an expert automotive retoucher preparing a dealership advertisement.
 
 TASK: Take the vehicle in IMAGE 1, remove its original background, and present that
@@ -285,7 +310,7 @@ STUDIO INTEGRATION:
 
 ${composition(framing)}
 ${clause ? `\n${clause}\n` : ''}
-`.trim()}${dealerNotes(notes)}`;
+`.trim()}${dealerNotes(notes)}`);
 }
 
 /**
@@ -295,7 +320,7 @@ export function buildKeepBackgroundPrompt(opts = {}) {
   const { notes, colorName, colorHex } = opts;
   const clause = recolorClause(colorName, colorHex);
 
-  return `${`
+  return withInputSafety(`${`
 You are an expert automotive retoucher enhancing a dealership photo while KEEPING its
 original background.
 
@@ -314,7 +339,7 @@ ENHANCE (without changing the scene):
   ground, in the same direction as the scene's light.
 ${clause ? `\n${clause}\n` : ''}
 OUTPUT: the same scene and framing, enhanced${colorName ? ` and recoloured to ${colorName}` : ''}, dealership-ready.
-`.trim()}${dealerNotes(notes)}`;
+`.trim()}${dealerNotes(notes)}`);
 }
 
 /**
@@ -332,7 +357,7 @@ export function buildInteriorPrompt(opts = {}) {
     ? `IMAGE 2 is the dealership/showroom reference. Use it only where a REAL physical window view exists in IMAGE 1. Never use IMAGE 2 to invent missing cabin geometry or expand the crop.`
     : `There is no IMAGE 2. Where a REAL physical window already exists in IMAGE 1, the outside view may become a clean, bright, upmarket car-dealership showroom (glass facade, polished floor, soft daylight), softly defocused. If no real window exists, change no view.`;
 
-  return `${`
+  return withInputSafety(`${`
 IMAGE 1 = source vehicle image.
 
 Create an interior dealership/showroom version while preserving IMAGE 1 as the physical source of truth.
@@ -381,7 +406,7 @@ Priority order:
 3. Change only the outside view through already-visible REAL windows.
 4. If no real window exists, make no window/view replacement.
 5. Never invent missing cabin elements.
-`.trim()}${dealerNotes(notes)}`;
+`.trim()}${dealerNotes(notes)}`);
 }
 
 /**
@@ -393,7 +418,7 @@ Priority order:
 export function buildDetailPrompt(opts = {}) {
   const { notes } = opts;
 
-  return `${`
+  return withInputSafety(`${`
 You are an expert automotive retoucher finishing a CLOSE-UP DETAIL photo for a
 dealership listing (a wheel, a badge, a headlight, a switch, a screen, a mirror).
 
@@ -429,7 +454,7 @@ CLEAN UP ONLY:
 - Correct white balance and contrast; sharpen gently.
 
 OUTPUT: the same photograph, same crop, same subject — just clean and print-ready.
-`.trim()}${dealerNotes(notes)}`;
+`.trim()}${dealerNotes(notes)}`);
 }
 
 export default buildVehicleEnhancementPrompt;
