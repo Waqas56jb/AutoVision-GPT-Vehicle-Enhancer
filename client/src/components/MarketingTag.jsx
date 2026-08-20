@@ -1,15 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Ban, BadgeCheck, PanelTop, ChevronDown } from 'lucide-react';
+import { Ban, BadgeCheck, PanelBottom, PanelTop, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
 
 /**
  * Chooses the marketing warranty tag applied to each finished image.
  *
- * Three options, matching the two dealer styles the client sent plus "off":
- *   none   — no tag.
- *   corner — a compact logo card in a top corner (auto-placed clear of the car).
- *   banner — a header band + footer band across the top and bottom.
+ * Four options — they never convert into each other:
+ *   none         — no tag.
+ *   corner       — a compact logo card in a top corner (auto-placed clear of the car).
+ *   footer       — bottom bar only. No header.
+ *   headerFooter — a header band + footer band across the top and bottom.
  *
  * The manufacturer is detected automatically from the car; if its badge is not
  * clearly visible the tag is skipped rather than guessed. The text fields let
@@ -17,21 +18,24 @@ import clsx from 'clsx';
  */
 const OPTIONS = [
   { value: 'none', label: 'No tag', icon: Ban, hint: 'No marketing overlay' },
-  { value: 'corner', label: 'Compact dealership card', icon: BadgeCheck, hint: 'Top-corner badge — not full width' },
-  { value: 'banner', label: 'Full-width header & footer', icon: PanelTop, hint: 'Letterbox bars across the photo' },
+  { value: 'corner', label: 'Compact corner card', icon: BadgeCheck, hint: 'Top-corner badge — not full width' },
+  { value: 'footer', label: 'Footer only', icon: PanelBottom, hint: 'Bottom bar only — no header' },
+  { value: 'headerFooter', label: 'Header + footer', icon: PanelTop, hint: 'Letterbox bars across the top and bottom' },
 ];
 
 export default function MarketingTag({ value, onChange, disabled }) {
   const [showText, setShowText] = useState(false);
   const tag = value || { style: 'none' };
   const set = (patch) => onChange({ ...tag, ...patch });
-  const active = tag.style && tag.style !== 'none';
+  const style = tag.style === 'banner' ? 'headerFooter' : tag.style || 'none';
+  const active = style !== 'none';
+  const showHeaderFields = style === 'corner' || style === 'headerFooter';
 
   return (
     <div>
       <div className="grid grid-cols-1 gap-2">
         {OPTIONS.map(({ value: v, label, icon: Icon, hint }) => {
-          const on = (tag.style || 'none') === v;
+          const on = style === v;
           return (
             <button
               key={v}
@@ -91,24 +95,28 @@ export default function MarketingTag({ value, onChange, disabled }) {
                   className="overflow-hidden"
                 >
                   <div className="mt-3 space-y-2.5">
-                    <input
-                      type="text"
-                      value={tag.title || ''}
-                      disabled={disabled}
-                      onChange={(e) => set({ title: e.target.value })}
-                      placeholder="Title — e.g. Balance of Honda Warranty"
-                      maxLength={60}
-                      className="field py-2.5"
-                    />
-                    <input
-                      type="text"
-                      value={tag.subtitle || ''}
-                      disabled={disabled}
-                      onChange={(e) => set({ subtitle: e.target.value })}
-                      placeholder="Subtitle — e.g. Unlimited KM warranty & roadside assist"
-                      maxLength={90}
-                      className="field py-2.5"
-                    />
+                    {showHeaderFields && (
+                      <>
+                        <input
+                          type="text"
+                          value={tag.title || ''}
+                          disabled={disabled}
+                          onChange={(e) => set({ title: e.target.value })}
+                          placeholder="Title — e.g. Balance of Honda Warranty"
+                          maxLength={60}
+                          className="field py-2.5"
+                        />
+                        <input
+                          type="text"
+                          value={tag.subtitle || ''}
+                          disabled={disabled}
+                          onChange={(e) => set({ subtitle: e.target.value })}
+                          placeholder="Subtitle — e.g. Unlimited KM warranty & roadside assist"
+                          maxLength={90}
+                          className="field py-2.5"
+                        />
+                      </>
+                    )}
                     <input
                       type="text"
                       value={tag.footer || ''}

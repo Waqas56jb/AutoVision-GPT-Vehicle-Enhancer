@@ -8,7 +8,6 @@ import {
   buildStudioEnhancementPrompt,
   buildKeepBackgroundPrompt,
   buildInteriorPrompt,
-  buildDetailPrompt,
 } from '../prompts/vehicleEnhancement.prompt.js';
 import { buildRecolorPrompt } from '../prompts/recolor.prompt.js';
 import { detectShotType } from './shotType.service.js';
@@ -102,17 +101,20 @@ export async function enhanceVehicleImage({
      right brief. skip is a hard gate: no vehicle evidence means no images.edit. */
   const shot = await detectShotType(vehicleBuffer);
 
-  if (shot.type === 'skip') {
-    logger.info(`Skipping image edit — shot=skip (${shot.reason}). Returning original.`);
+  if (shot.type === 'skip' || shot.type === 'detail') {
+    logger.info(
+      `Skipping image edit — shot=${shot.type} (${shot.reason}). Returning original.`
+    );
     return {
       b64: vehicleBuffer.toString('base64'),
-      shotType: 'skip',
-      skipped: true,
+      shotType: shot.type,
+      skipped: shot.type === 'skip',
+      passthrough: true,
       model: 'passthrough',
       size: outputSize,
       quality: 'original',
       usedBackground: false,
-      mode: 'skip',
+      mode: shot.type,
       framing: framing || 'default',
       colorName: null,
       colorHex: null,
@@ -122,8 +124,6 @@ export async function enhanceVehicleImage({
   let prompt;
   if (shot.type === 'interior') {
     prompt = buildInteriorPrompt({ notes, hasBackground: usedBackground });
-  } else if (shot.type === 'detail') {
-    prompt = buildDetailPrompt({ notes });
   } else if (effectiveMode === 'replace') {
     prompt = buildVehicleEnhancementPrompt({ notes, framing, colorName, colorHex });
   } else if (effectiveMode === 'keep') {
@@ -132,9 +132,8 @@ export async function enhanceVehicleImage({
     prompt = buildStudioEnhancementPrompt({ notes, framing, colorName, colorHex });
   }
 
-  /* A detail close-up has no background to composite, so sending one only invites
-     the model to paste a showroom behind a wheel nut. */
-  const sendBackground = usedBackground && shot.type !== 'detail';
+  /* skip and detail already returned. Exterior and interior may receive IMAGE 2. */
+  const sendBackground = usedBackground;
 
   // Order matters: [0] vehicle, [1] background (the prompt references this order).
   const imageFiles = [await toFile(vehicleBuffer, 'vehicle.png', { type: 'image/png' })];

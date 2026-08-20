@@ -33,9 +33,15 @@ export const enhance = asyncHandler(async (req, res) => {
   const framing = FRAMING_LEVELS.includes(req.body?.framing) ? req.body.framing : DEFAULT_FRAMING;
   const { key: format, preset } = resolveFormat(req.body?.format);
 
-  // Optional marketing warranty tag: 'none' | 'corner' | 'banner', with optional
-  // custom copy overriding the brand defaults.
-  const tagStyle = ['corner', 'banner'].includes(req.body?.tagStyle) ? req.body.tagStyle : 'none';
+  // Optional marketing warranty tag: 'none' | 'corner' | 'footer' | 'headerFooter'.
+  // Legacy 'banner' is accepted as headerFooter only — never as footer.
+  const rawTag = req.body?.tagStyle;
+  const tagStyle =
+    rawTag === 'banner'
+      ? 'headerFooter'
+      : ['corner', 'footer', 'headerFooter'].includes(rawTag)
+        ? rawTag
+        : 'none';
   const clip = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
   const tagTitle = clip(req.body?.tagTitle, 60);
   const tagSubtitle = clip(req.body?.tagSubtitle, 90);
@@ -94,9 +100,11 @@ export const enhance = asyncHandler(async (req, res) => {
   let framedApplied = false;
   let framedFill = null;
   const skipped = Boolean(result.skipped) || result.shotType === 'skip';
+  const passthrough =
+    Boolean(result.passthrough) || skipped || result.shotType === 'detail';
 
-  if (skipped) {
-    // Non-vehicle input: original pixels only. No resize, crop-zoom, or tag.
+  if (passthrough) {
+    // skip: not a vehicle. detail: real part, but no images.edit (glyphs stay original).
     finalBuf = genBuf;
   } else if (result.shotType === 'exterior') {
     /* The car's size is GUARANTEED here, not left to the model. We measure where
@@ -110,8 +118,7 @@ export const enhance = asyncHandler(async (req, res) => {
     framedApplied = framed.applied;
     framedFill = framed.fill;
   } else {
-    // Interior and detail shots must NOT be zoomed — the whole frame is the
-    // subject. Deliver at the platform size unchanged.
+    // Interior shots must NOT be zoomed — the whole frame is the subject.
     finalBuf = await resizeTo(genBuf, outW, outH);
   }
 
@@ -119,7 +126,8 @@ export const enhance = asyncHandler(async (req, res) => {
      make can actually be read from the car — a wrong maker's name on a listing is
      worse than none, so an unclear badge means no tag (the client's rule).
      Corner stays a compact card even if both top corners are tight; it never
-     converts into a full-width banner. Banner is only when the operator picks it. */
+     converts into a full-width banner. Footer is bottom-bar only. Header+footer
+     is only when the operator picks headerFooter. */
   let tagMeta = null;
   if (tagStyle !== 'none' && result.shotType === 'exterior') {
     const { brand, make, logoClear } = await detectBrand(vehicleBuffer);
@@ -141,7 +149,7 @@ export const enhance = asyncHandler(async (req, res) => {
   }
 
   const finalB64 = finalBuf.toString('base64');
-  const delivered = skipped ? await describe(finalBuf) : { width: outW, height: outH };
+  const delivered = passthrough ? await describe(finalBuf) : { width: outW, height: outH };
   const finalSize = `${delivered.width}x${delivered.height}`;
 
   const elapsedMs = Date.now() - startedAt;
@@ -156,6 +164,7 @@ export const enhance = asyncHandler(async (req, res) => {
         // Which brief ran: exterior / interior / detail / skip.
         shotType: result.shotType,
         skipped,
+        passthrough,
         generatedSize: result.size,
         size: finalSize,
         format,

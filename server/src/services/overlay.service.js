@@ -9,11 +9,11 @@ import logger from '../utils/logger.js';
 /**
  * Draws the dealer's marketing warranty tag onto a finished image.
  *
- * Two layouts, chosen by the operator — they never convert into each other:
- *   corner — compact card in a top corner (the product default look).
- *            May shrink or switch corner if the car is in the way.
- *            NEVER becomes a full-width banner.
- *   banner — full-width header + footer. Only when the operator picks it.
+ * Four layouts, chosen by the operator — they never convert into each other:
+ *   none         — draw nothing.
+ *   corner       — compact card in a top corner. NEVER becomes a full-width bar.
+ *   footer       — bottom bar only. No header, no top logo, no title.
+ *   headerFooter — full-width header + footer. Only when the operator picks it.
  *
  * Everything is deterministic SVG composited with sharp. Text uses bundled Roboto.
  */
@@ -137,7 +137,7 @@ function cornerCardSvg({ w, h, brand, title, subtitle, footer, hasLogo }) {
   </svg>`;
 }
 
-/** Full-width bands — only when the operator explicitly picks banner. */
+/** Full-width header + footer — only when the operator explicitly picks headerFooter. */
 function bannerSvg({ W, H, brand, title, subtitle, footer }) {
   const headH = Math.round(H * 0.13);
   const footH = Math.round(H * 0.088);
@@ -158,6 +158,20 @@ function bannerSvg({ W, H, brand, title, subtitle, footer }) {
     <text x="${W / 2}" y="${H - footH / 2}" text-anchor="middle" dominant-baseline="central"
           font-family="${FONT_FAMILY}" font-weight="800" font-size="${footSize}"
           fill="#ffffff" letter-spacing="1.2">${esc(footer.toUpperCase())}</text>
+  </svg>`;
+}
+
+/** Bottom bar only — no top rect, logo, title, subtitle, or header. */
+function footerSvg({ W, H, footer }) {
+  const footerH = Math.round(H * 0.088);
+  const label = String(footer || '').toUpperCase();
+  const footSize = fitSize(label, Math.round(footerH * 0.4), W - Math.round(W * 0.04), 700, 11);
+
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="${H - footerH}" width="${W}" height="${footerH}" fill="#000000"/>
+    <text x="${W / 2}" y="${H - footerH / 2}" text-anchor="middle" dominant-baseline="central"
+          font-family="${FONT_FAMILY}" font-weight="700" font-size="${footSize}"
+          fill="#ffffff" letter-spacing="1.2">${esc(label)}</text>
   </svg>`;
 }
 
@@ -214,9 +228,23 @@ export async function applyMarketingTag(imageBuffer, { style, brand, title, subt
   const W = meta.width;
   const H = meta.height;
   const copy = displayCopy(brand, title, subtitle, footer);
-  const layers = [];
 
-  if (style === 'banner') {
+  if (!style || style === 'none') {
+    return { buffer: imageBuffer, placement: 'none' };
+  }
+
+  if (style === 'footer') {
+    const svg = footerSvg({ W, H, footer: copy.footer });
+    const buffer = await sharp(imageBuffer)
+      .composite([{ input: await raster(svg), top: 0, left: 0 }])
+      .png()
+      .toBuffer();
+    logger.info(`Applied ${brand.name} marketing tag (footer).`);
+    return { buffer, placement: 'footer' };
+  }
+
+  if (style === 'headerFooter') {
+    const layers = [];
     const svg = bannerSvg({ W, H, brand, ...copy });
     layers.push({ input: await raster(svg), top: 0, left: 0 });
 
@@ -239,11 +267,17 @@ export async function applyMarketingTag(imageBuffer, { style, brand, title, subt
     }
 
     const buffer = await sharp(imageBuffer).composite(layers).png().toBuffer();
-    logger.info(`Applied ${brand.name} marketing tag (banner).`);
-    return { buffer, placement: 'banner' };
+    logger.info(`Applied ${brand.name} marketing tag (headerFooter).`);
+    return { buffer, placement: 'headerFooter' };
+  }
+
+  if (style !== 'corner') {
+    logger.warn(`Unknown marketing tag style "${style}" — drawing nothing.`);
+    return { buffer: imageBuffer, placement: 'none' };
   }
 
   /* Corner is a bounded overlay. It may change size and side, never footprint → 100%. */
+  const layers = [];
   const cardWRatio = 0.4;
   const cardHRatio = 0.17;
   const marginRatio = 0.03;
