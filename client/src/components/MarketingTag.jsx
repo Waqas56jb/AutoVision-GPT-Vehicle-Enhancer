@@ -16,9 +16,9 @@ import clsx from 'clsx';
  * the operator override the auto-generated warranty copy per batch.
  */
 const OPTIONS = [
-  { value: 'none', label: 'No tag', icon: Ban, hint: 'Clean image, no overlay' },
-  { value: 'corner', label: 'Corner logo', icon: BadgeCheck, hint: 'Compact badge in a top corner' },
-  { value: 'banner', label: 'Header & footer', icon: PanelTop, hint: 'Bands top and bottom' },
+  { value: 'none', label: 'No tag', icon: Ban, hint: 'No marketing overlay' },
+  { value: 'corner', label: 'Compact dealership card', icon: BadgeCheck, hint: 'Top-corner badge — not full width' },
+  { value: 'banner', label: 'Full-width header & footer', icon: PanelTop, hint: 'Letterbox bars across the photo' },
 ];
 
 export default function MarketingTag({ value, onChange, disabled }) {

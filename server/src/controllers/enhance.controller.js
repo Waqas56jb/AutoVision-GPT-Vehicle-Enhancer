@@ -113,9 +113,9 @@ export const enhance = asyncHandler(async (req, res) => {
 
   /* Marketing warranty tag (optional). Only on exterior shots, and only when the
      make can actually be read from the car — a wrong maker's name on a listing is
-     worse than none, so an unclear badge means no tag (the client's rule). The
-     corner style is placed away from the car using the measured box; if the car
-     occupies both top corners it falls back to the banner so nothing overlaps. */
+     worse than none, so an unclear badge means no tag (the client's rule).
+     Corner stays a compact card even if both top corners are tight; it never
+     converts into a full-width banner. Banner is only when the operator picks it. */
   let tagMeta = null;
   if (tagStyle !== 'none' && result.shotType === 'exterior') {
     const { brand, make, logoClear } = await detectBrand(vehicleBuffer);
