@@ -43,7 +43,7 @@ export default function TagLibrary({ library, editing, onEdit, onNew, onDraftCha
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-[11px] leading-relaxed text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+      <p className="rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-[11px] leading-relaxed text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
         Tags go on top of the finished photos. Pick the corner, the photos, the colours, fonts and
         logo — and change them any time. <b>No re-render and no extra cost.</b>
       </p>
@@ -55,8 +55,8 @@ export default function TagLibrary({ library, editing, onEdit, onNew, onDraftCha
       {library.ready && tags.length === 0 && (
         <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-brand-100 px-4 py-6 text-center dark:border-white/10">
           <Sparkles className="mb-2 h-6 w-6 text-brand-400" />
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No tags yet</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+          <p className="text-sm font-bold text-stone-700 dark:text-stone-200">No tags yet</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-stone-400">
             Make a corner warranty tag, a header, a footer — or upload a tag your team already
             designed.
           </p>
@@ -80,8 +80,8 @@ export default function TagLibrary({ library, editing, onEdit, onNew, onDraftCha
               </button>
               <div className="flex items-center gap-2 p-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{tag.name}</p>
-                  <p className="truncate text-[11px] text-slate-400">
+                  <p className="truncate text-sm font-bold text-stone-800 dark:text-stone-100">{tag.name}</p>
+                  <p className="truncate text-[11px] text-stone-400">
                     {describeTag(tag)} ·{' '}
                     <span className="font-semibold text-brand-600 dark:text-brand-300">
                       {APPLY_RULES.find((r) => r.value === tag.applyTo)?.label}
@@ -143,7 +143,7 @@ export default function TagLibrary({ library, editing, onEdit, onNew, onDraftCha
             }}
           />
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <p className="mt-2 text-[11px] leading-relaxed text-stone-400">
           Tags are saved in this browser. Export them to a file and import it on another computer
           so every photographer uses the same tags.
         </p>

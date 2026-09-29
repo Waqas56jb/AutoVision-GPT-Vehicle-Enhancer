@@ -6,6 +6,7 @@ import {
   listBackgrounds,
   saveBackground,
   deleteBackground,
+  BUILT_IN_BACKGROUNDS,
 } from '../services/backgrounds.service.js';
 
 const router = Router();
@@ -30,6 +31,9 @@ router.post(
 router.delete(
   '/backgrounds/:id',
   asyncHandler(async (req, res) => {
+    if (BUILT_IN_BACKGROUNDS.has(req.params.id)) {
+      throw ApiError.badRequest('Built-in backgrounds cannot be deleted.');
+    }
     const ok = deleteBackground(req.params.id);
     if (!ok) throw ApiError.badRequest('Background not found.');
     res.json({ success: true, data: { deleted: req.params.id } });

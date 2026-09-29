@@ -98,8 +98,8 @@ export function ProgressRing({ value = 0, size = 132, stroke = 8, children }) {
       <svg width={size} height={size} className="-rotate-90">
         <defs>
           <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#2563eb" />
-            <stop offset="100%" stopColor="#60a5fa" />
+            <stop offset="0%" stopColor="#d9c096" />
+            <stop offset="100%" stopColor="#785b35" />
           </linearGradient>
         </defs>
         <circle
@@ -107,7 +107,8 @@ export function ProgressRing({ value = 0, size = 132, stroke = 8, children }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#dbeafe"
+          stroke="currentColor"
+          className="text-stone-200 dark:text-white/10"
           strokeWidth={stroke}
         />
         <circle

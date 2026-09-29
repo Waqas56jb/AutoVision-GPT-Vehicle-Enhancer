@@ -21,7 +21,7 @@ export default function PhotoTags({ tags, selected, overrides, onToggle, onReset
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-slate-400 transition hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-white/5"
+            className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-stone-400 transition hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-white/5"
             title="Go back to each tag's automatic rule for this photo"
           >
             <RotateCcw className="h-3 w-3" /> Auto
@@ -38,7 +38,7 @@ export default function PhotoTags({ tags, selected, overrides, onToggle, onReset
           <Plus className="h-3.5 w-3.5" /> Create your first tag
         </button>
       ) : !selected ? (
-        <p className="text-[11px] text-slate-400">Pick a photo in the strip below.</p>
+        <p className="text-[11px] text-stone-400">Pick a photo in the strip below.</p>
       ) : (
         <ul className="space-y-1.5">
           {tags.map((tag) => {
@@ -64,7 +64,7 @@ export default function PhotoTags({ tags, selected, overrides, onToggle, onReset
                   onClick={() => onToggle(tag.id, !on)}
                   className={clsx(
                     'relative h-5 w-9 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
-                    on ? 'bg-brand-600' : 'bg-slate-300 dark:bg-white/20'
+                    on ? 'bg-brand-600' : 'bg-stone-300 dark:bg-white/20'
                   )}
                 >
                   <span
@@ -75,15 +75,15 @@ export default function PhotoTags({ tags, selected, overrides, onToggle, onReset
                   />
                 </button>
                 <button type="button" onClick={() => onToggle(tag.id, !on)} className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-xs font-bold text-slate-700 dark:text-slate-100">{tag.name}</span>
-                  <span className="block truncate text-[10.5px] text-slate-400">
+                  <span className="block truncate text-xs font-bold text-stone-700 dark:text-stone-100">{tag.name}</span>
+                  <span className="block truncate text-[10.5px] text-stone-400">
                     {isOverride ? 'Set for this photo' : `Auto · ${rule}`}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onEdit(tag)}
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white hover:text-brand-700 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-white hover:text-brand-700 dark:hover:bg-white/10 dark:hover:text-white"
                   title="Edit tag"
                   aria-label={`Edit ${tag.name}`}
                 >

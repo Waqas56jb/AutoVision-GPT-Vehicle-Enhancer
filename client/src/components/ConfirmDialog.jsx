@@ -56,10 +56,10 @@ export default function ConfirmDialog({
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md rounded-2xl border border-brand-100 bg-white p-5 shadow-lift dark:border-white/10 dark:bg-ink-900"
           >
-            <h3 id="confirm-title" className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+            <h3 id="confirm-title" className="text-base font-extrabold tracking-tight text-stone-900 dark:text-white">
               {title}
             </h3>
-            <p id="confirm-desc" className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p id="confirm-desc" className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
               {message}
             </p>
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -4,15 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f7faff" />
+    <meta name="theme-color" content="#f5f3ef" />
     <meta name="description" content="AutoVision GPT — AI-powered dealership-grade vehicle photo enhancement." />
     <title>AutoVision GPT — Vehicle Image Enhancer</title>
-    <!-- Fonts offered for marketing tags (src/tags/tagModel.js → FONTS). -->
+    <!-- UI fonts (Geist, Instrument Serif) + fonts offered for marketing tags (src/tags/tagModel.js → FONTS). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Barlow+Condensed:wght@500;700;800&family=Bebas+Neue&family=Montserrat:wght@500;700;800&family=Open+Sans:wght@500;700;800&family=Oswald:wght@500;700&family=Playfair+Display:wght@500;700;800&family=Poppins:wght@500;700;800&family=Roboto:wght@500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Inter:wght@500;700;800&family=Barlow+Condensed:wght@500;700;800&family=Bebas+Neue&family=Montserrat:wght@500;700;800&family=Open+Sans:wght@500;700;800&family=Oswald:wght@500;700&family=Playfair+Display:wght@500;700;800&family=Poppins:wght@500;700;800&family=Roboto:wght@500;700;900&display=swap"
     />
     <script>
       /* Apply persisted theme before first paint to avoid a light flash. */
@@ -29,21 +29,21 @@
          instead of a white flash followed by a layout jump. */
       body {
         margin: 0;
-        background: #f7faff;
+        background: #f5f3ef;
       }
       html.dark body {
-        background: #0a1738;
+        background: #0f0f12;
       }
       #boot {
         position: fixed;
         inset: 0;
         display: grid;
         place-items: center;
-        background: #f7faff;
+        background: #f5f3ef;
         transition: opacity 0.4s ease;
       }
       html.dark #boot {
-        background: #0a1738;
+        background: #0f0f12;
       }
       #boot.hide {
         opacity: 0;
@@ -53,8 +53,8 @@
         width: 44px;
         height: 44px;
         border-radius: 9999px;
-        border: 3px solid #dbeafe;
-        border-top-color: #2563eb;
+        border: 2px solid #e8d9bf;
+        border-top-color: #957240;
         animation: boot-spin 0.8s linear infinite;
       }
       @keyframes boot-spin {

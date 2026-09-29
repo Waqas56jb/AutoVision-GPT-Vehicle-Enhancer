@@ -61,7 +61,7 @@ export default function ColorPicker({ value, onChange, disabled }) {
                 className={clsx(
                   'h-3.5 w-3.5 drop-shadow',
                   /* Tick has to survive on a white swatch as well as a black one. */
-                  isLight(color.hex) ? 'text-slate-900' : 'text-white'
+                  isLight(color.hex) ? 'text-stone-900' : 'text-white'
                 )}
                 strokeWidth={3}
               />
@@ -77,19 +77,19 @@ export default function ColorPicker({ value, onChange, disabled }) {
     <div>
       <div className="mb-2.5 flex items-center justify-between">
         <label className="label">
-          Change paint colour <span className="font-normal text-slate-400">(optional)</span>
+          Change paint colour <span className="font-normal text-stone-400">(optional)</span>
         </label>
         <span
           className={clsx(
             'rounded-full px-2.5 py-1 text-xs font-medium transition',
-            value.length ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-200' : 'text-slate-400'
+            value.length ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-200' : 'text-stone-400'
           )}
         >
           {value.length ? `${value.length} selected` : 'keep original colour'}
         </span>
       </div>
 
-      <p className="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+      <p className="mb-3 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
         Optional. Selected colours replace the original paint for this run — they do not also keep a copy in the source colour.
       </p>
 
@@ -170,7 +170,7 @@ export default function ColorPicker({ value, onChange, disabled }) {
                 type="button"
                 disabled={disabled}
                 onClick={() => onChange(value.filter((v) => v.key !== c.key))}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-soft transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-white/10 dark:bg-ink-800 dark:text-slate-200 dark:hover:border-red-400/40 dark:hover:bg-red-950/40"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1 text-xs font-medium text-stone-600 shadow-soft transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-white/10 dark:bg-ink-800 dark:text-stone-200 dark:hover:border-red-400/40 dark:hover:bg-red-950/40"
                 title="Remove"
               >
                 <span

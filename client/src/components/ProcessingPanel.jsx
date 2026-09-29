@@ -36,22 +36,22 @@ export default function ProcessingPanel({ done, total }) {
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="flex w-full max-w-sm flex-col items-center rounded-3xl border border-white bg-white/85 p-8 shadow-lift backdrop-blur-xl dark:border-white/10 dark:bg-ink-900/90"
+      className="glass flex w-full max-w-sm flex-col items-center rounded-[28px] p-8"
     >
       <ProgressRing value={percent}>
-        <Car className="mb-1 h-6 w-6 animate-float text-brand-600" />
-        <span className="text-2xl font-extrabold tracking-tight text-slate-900">
+        <Car className="mb-1 h-6 w-6 animate-float text-brand-600 dark:text-brand-300" />
+        <span className="font-mono text-2xl font-medium tracking-tight text-stone-900 dark:text-white">
           {Math.round(percent)}%
         </span>
-        <span className="text-[11px] font-semibold text-slate-400">
+        <span className="text-[11px] font-semibold text-stone-400">
           {done} of {total}
         </span>
       </ProgressRing>
 
-      <h3 className="mt-6 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
+      <h3 className="display mt-6 text-[28px] leading-none text-stone-900 dark:text-white">
         Enhancing your vehicles
       </h3>
-      <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-center text-sm text-stone-500 dark:text-stone-400">
         About a minute per image. Results appear below as they finish.
       </p>
 
@@ -65,7 +65,7 @@ export default function ProcessingPanel({ done, total }) {
               transition={{ duration: 0.3 }}
               className={clsx(
                 'flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-sm transition-colors',
-                state === 'active' ? 'bg-brand-50 font-semibold text-brand-800 dark:bg-brand-600/20 dark:text-brand-100' : 'text-slate-500'
+                state === 'active' ? 'bg-brand-50 font-medium text-stone-900 dark:bg-brand-400/10 dark:text-white' : 'text-stone-500'
               )}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center">
@@ -73,7 +73,7 @@ export default function ProcessingPanel({ done, total }) {
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="grid h-5 w-5 place-items-center rounded-full bg-brand-600"
+                    className="grid h-5 w-5 place-items-center rounded-full bg-ink-900 dark:bg-brand-300"
                   >
                     <Check className="h-3 w-3 text-white" strokeWidth={3} />
                   </motion.span>

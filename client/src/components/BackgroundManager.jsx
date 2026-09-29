@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Check, Trash2, Upload, ImageIcon, Sparkles, HardDrive } from 'lucide-react';
+import { Check, Trash2, Upload, ImageIcon, Sparkles, HardDrive, Lock } from 'lucide-react';
 import {
   fetchBackgrounds,
   uploadBackground,
@@ -81,6 +81,7 @@ export default function BackgroundManager({ value, onChange, disabled }) {
         id: p.id,
         name: p.name,
         url: assetUrl(p.url),
+        builtIn: Boolean(p.builtIn),
         persisted: false,
         localOnly: false,
       });
@@ -93,6 +94,7 @@ export default function BackgroundManager({ value, onChange, disabled }) {
         id: rec.id,
         name: rec.name || prettyName(rec.fileName || rec.id),
         url,
+        builtIn: false,
         persisted: true,
         localOnly: !remote.some((p) => p.id === rec.id),
       });
@@ -234,22 +236,102 @@ export default function BackgroundManager({ value, onChange, disabled }) {
   const currentLabel =
     value === 'keep' ? 'Original scene kept' : value === 'studio' ? 'Clean studio' : selectedPreset?.name || 'Saved scene';
 
-  const OptionTile = ({ active, onClick, children, title }) => (
+  const OptionTile = ({ active, onClick, icon: Icon, title, hint }) => (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      title={title}
       aria-pressed={active}
       className={clsx(
-        'tile flex aspect-[3/2] flex-col items-center justify-center gap-1 text-center text-xs font-medium',
+        'tile flex items-center gap-3 px-3 py-3 text-left',
         active ? 'tile-active' : 'tile-idle',
         disabled && 'cursor-not-allowed opacity-60'
       )}
     >
-      {children}
+      <span
+        className={clsx(
+          'grid h-8 w-8 shrink-0 place-items-center rounded-full',
+          active ? 'bg-ink-900 text-white dark:bg-brand-300 dark:text-ink-950' : 'bg-stone-100 text-stone-600 dark:bg-white/10 dark:text-stone-300'
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-semibold">{title}</span>
+        <span className="block truncate text-[11px] text-stone-400">{hint}</span>
+      </span>
     </button>
   );
+
+  const builtIns = presets.filter((p) => p.builtIn);
+  const uploads = presets.filter((p) => !p.builtIn);
+
+  const renderScene = (p, i) => {
+    const active = value === p.id;
+    return (
+      <motion.div
+        key={p.id}
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: Math.min(i, 8) * 0.04 }}
+        className="group relative"
+      >
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(p.id)}
+          aria-pressed={active}
+          aria-label={p.name}
+          title={p.name}
+          className={clsx(
+            'relative block aspect-[3/2] w-full overflow-hidden rounded-xl transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+            active
+              ? 'ring-2 ring-brand-400 ring-offset-2 ring-offset-white dark:ring-offset-ink-900'
+              : 'ring-1 ring-black/5 hover:-translate-y-px hover:shadow-soft dark:ring-white/10',
+            disabled && 'cursor-not-allowed opacity-60'
+          )}
+        >
+          <img
+            src={p.url}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+          />
+          <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-left text-[10.5px] font-medium text-white">
+            {p.name}
+          </span>
+          {active && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow"
+            >
+              <Check className="h-3 w-3 text-brand-700" strokeWidth={3} />
+            </motion.span>
+          )}
+        </button>
+        {/* A sibling of the select button — never nested inside it. */}
+        {p.builtIn ? (
+          <span
+            className="pointer-events-none absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white/85 text-stone-500 shadow-sm backdrop-blur"
+            title="Built-in scene — always available"
+          >
+            <Lock className="h-3 w-3" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => !disabled && setPendingDelete(p)}
+            className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-stone-600 shadow-sm backdrop-blur transition hover:bg-red-500 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+            title="Delete this background"
+            aria-label={`Delete ${p.name}`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </motion.div>
+    );
+  };
 
   return (
     <div {...getRootProps({ className: 'relative outline-none' })}>
@@ -264,145 +346,88 @@ export default function BackgroundManager({ value, onChange, disabled }) {
       />
 
       {isDragActive && (
-        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-2xl border-2 border-dashed border-brand-500 bg-brand-50/90 text-sm font-bold text-brand-800 dark:bg-ink-900/90 dark:text-brand-200">
-          Drop scenes to save them on this device
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-2xl border border-dashed border-brand-400 bg-brand-50/90 text-sm font-semibold text-brand-800 backdrop-blur dark:bg-ink-900/90 dark:text-brand-200">
+          Drop scenes to save them
         </div>
       )}
 
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <label className="label">Background</label>
+      {/* The chosen scene, large. */}
+      <div className="relative mb-4 overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10" aria-live="polite">
+        {selectedPreset?.url ? (
+          <img src={selectedPreset.url} alt="" className="aspect-[16/9] w-full object-cover" />
+        ) : (
+          <div className="grid aspect-[16/9] w-full place-items-center bg-gradient-to-b from-stone-100 to-stone-200 dark:from-white/[0.06] dark:to-white/[0.02]">
+            {value === 'keep' ? (
+              <ImageIcon className="h-7 w-7 text-stone-400" />
+            ) : (
+              <Sparkles className="h-7 w-7 text-brand-500" />
+            )}
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-3.5 pb-3 pt-8">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">Current scene</p>
+          <p className="truncate text-sm font-semibold text-white">{currentLabel}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <OptionTile
+          active={value === 'studio'}
+          onClick={() => onChange('studio')}
+          icon={Sparkles}
+          title="Clean studio"
+          hint="Soft grey sweep"
+        />
+        <OptionTile
+          active={value === 'keep'}
+          onClick={() => onChange('keep')}
+          icon={ImageIcon}
+          title="Keep original"
+          hint="As shot, cleaned"
+        />
+      </div>
+
+      <p className="micro mb-2.5 mt-6">Showroom scenes</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {loading
+          ? Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="aspect-[3/2] rounded-xl" />)
+          : builtIns.map(renderScene)}
+      </div>
+
+      <div className="mb-2.5 mt-6 flex items-center justify-between gap-2">
+        <p className="micro flex items-center gap-1.5">
+          <HardDrive className="h-3 w-3" /> Your scenes
+        </p>
         <button
           type="button"
           disabled={disabled || uploading}
           onClick={() => fileRef.current?.click()}
-          className="btn-ghost px-2.5 py-1.5 text-xs"
+          className="btn-ghost h-8 px-3 text-xs"
         >
           {uploading ? <Spinner size="xs" /> : <Upload className="h-3.5 w-3.5" />}
-          {uploading
-            ? `Saving ${uploadProgress.done}/${uploadProgress.total}…`
-            : 'Upload backgrounds'}
+          {uploading ? `Saving ${uploadProgress.done}/${uploadProgress.total}…` : 'Upload'}
         </button>
       </div>
-
-      <p className="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-        Uploads are saved on this device and survive refresh. Interior and close-up
-        photos ignore the scene automatically — only exteriors are composited.
-      </p>
-
-      <div
-        className="mb-3 flex items-center gap-2.5 rounded-xl border border-brand-100 bg-brand-50/50 px-2.5 py-2 dark:border-white/10 dark:bg-white/5"
-        aria-live="polite"
-      >
-        {selectedPreset?.url ? (
-          <img
-            src={selectedPreset.url}
-            alt=""
-            className="h-9 w-12 shrink-0 rounded-lg object-cover ring-1 ring-brand-100 dark:ring-white/10"
-          />
-        ) : (
-          <span className="grid h-9 w-12 shrink-0 place-items-center rounded-lg bg-white ring-1 ring-brand-100 dark:bg-ink-800 dark:ring-white/10">
-            {value === 'keep' ? (
-              <ImageIcon className="h-4 w-4 text-brand-600" />
-            ) : (
-              <Sparkles className="h-4 w-4 text-brand-600" />
-            )}
+      {!loading && uploads.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled || uploading}
+          className="flex w-full flex-col items-center gap-1 rounded-xl border border-dashed border-stone-300 px-4 py-5 text-center transition hover:border-stone-400 hover:bg-stone-50 dark:border-white/15 dark:hover:bg-white/[0.04]"
+        >
+          <Upload className="h-4 w-4 text-stone-500" />
+          <span className="text-xs font-medium text-stone-700 dark:text-stone-200">
+            Upload your dealership’s backgrounds
           </span>
-        )}
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current scene</p>
-          <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{currentLabel}</p>
-        </div>
-      </div>
+          <span className="text-[11px] text-stone-400">Saved on this device — they stay after a refresh</span>
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5">{uploads.map(renderScene)}</div>
+      )}
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <OptionTile
-          active={value === 'keep'}
-          onClick={() => onChange('keep')}
-          title="Keep the original background"
-        >
-          <ImageIcon className="h-5 w-5" />
-          Keep original
-        </OptionTile>
-        <OptionTile
-          active={value === 'studio'}
-          onClick={() => onChange('studio')}
-          title="Clean studio backdrop"
-        >
-          <Sparkles className="h-5 w-5" />
-          Clean studio
-        </OptionTile>
-
-        {loading
-          ? Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="aspect-[3/2] rounded-2xl" />
-            ))
-          : presets.map((p, i) => {
-              const active = value === p.id;
-              return (
-                <motion.button
-                  key={p.id}
-                  type="button"
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: Math.min(i, 8) * 0.04 }}
-                  disabled={disabled}
-                  onClick={() => onChange(p.id)}
-                  aria-pressed={active}
-                  aria-label={p.name}
-                  className={clsx(
-                    'group relative aspect-[3/2] overflow-hidden rounded-2xl border transition duration-200',
-                    active
-                      ? 'border-brand-500 shadow-glow ring-2 ring-brand-500'
-                      : 'border-brand-100 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-soft dark:border-white/10',
-                    disabled && 'cursor-not-allowed opacity-60'
-                  )}
-                  title={p.name}
-                >
-                  <img
-                    src={p.url}
-                    alt={p.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  />
-                  <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-slate-900/80 to-transparent px-2 py-1.5 text-left text-[10px] font-medium text-white">
-                    {p.name}
-                  </span>
-                  {p.persisted && (
-                    <span
-                      className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-brand-700 shadow-soft"
-                      title="Saved on this device"
-                    >
-                      <HardDrive className="h-3 w-3" />
-                    </span>
-                  )}
-                  {active && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className={clsx(
-                        'absolute grid h-5 w-5 place-items-center rounded-full bg-brand-600 shadow-glow',
-                        p.persisted ? 'left-7 top-1.5' : 'left-1.5 top-1.5'
-                      )}
-                    >
-                      <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                    </motion.span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!disabled) setPendingDelete(p);
-                    }}
-                    className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-slate-600 opacity-0 shadow-soft transition hover:bg-red-500 hover:text-white group-hover:opacity-100 focus-visible:opacity-100"
-                    title="Delete"
-                    aria-label={`Delete ${p.name}`}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </motion.button>
-              );
-            })}
-      </div>
+      <p className="mt-4 text-[11px] leading-relaxed text-stone-400">
+        Interior and close-up photos ignore the scene automatically — only exteriors are placed into it.
+      </p>
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

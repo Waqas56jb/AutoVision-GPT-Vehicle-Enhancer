@@ -39,9 +39,9 @@ export const MAX_ATTEMPTS = 4;
 
 /** How much of the frame the vehicle should fill (sent to the backend). */
 export const FRAMING_OPTIONS = [
-  { value: 'standard', label: 'Standard', hint: 'Car ~82% of frame' },
-  { value: 'large', label: 'Large', hint: 'Car ~90% (recommended)' },
-  { value: 'hero', label: 'Hero', hint: 'Tight crop, car ~95%' },
+  { value: 'standard', label: 'Standard', hint: '~82% of frame' },
+  { value: 'large', label: 'Large', hint: '~90% · default' },
+  { value: 'hero', label: 'Hero', hint: '~95% · tight' },
 ];
 export const DEFAULT_FRAMING = 'large';
 

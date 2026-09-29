@@ -2,7 +2,8 @@ import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
 /**
- * Compact segmented button group for choosing one option from a small set.
+ * Choose one option from a small set — a grid of quiet tiles with a champagne
+ * selection that glides between them.
  *
  * @param {object} props
  * @param {string} props.label
@@ -14,8 +15,8 @@ import clsx from 'clsx';
 export default function SegmentedControl({ label, options, value, onChange, disabled }) {
   return (
     <div>
-      <label className="label mb-2.5 block">{label}</label>
-      <div className="flex flex-wrap gap-2">
+      <label className="label mb-3 block">{label}</label>
+      <div className={clsx('grid gap-2', options.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -26,29 +27,24 @@ export default function SegmentedControl({ label, options, value, onChange, disa
               onClick={() => onChange(opt.value)}
               aria-pressed={active}
               className={clsx(
-                'relative flex flex-1 basis-[90px] flex-col items-center rounded-2xl border px-2 py-2.5 text-center transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+                'relative isolate flex flex-col items-start rounded-xl border px-3 py-2.5 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
                 active
-                  ? 'border-brand-500 text-brand-800 shadow-glow dark:text-brand-100'
-                  : 'border-brand-100 bg-white/80 text-slate-600 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white/10 dark:bg-ink-800 dark:text-slate-300 dark:hover:border-brand-400/40',
+                  ? 'border-brand-400 text-stone-900 dark:border-brand-400/70 dark:text-white'
+                  : 'border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50 dark:border-white/10 dark:text-stone-300 dark:hover:border-white/20 dark:hover:bg-white/[0.04]',
                 disabled && 'cursor-not-allowed opacity-60'
               )}
             >
-              {/* The selected pill slides between options instead of blinking. */}
+              {/* The selected fill slides between options instead of blinking. */}
               {active && (
                 <motion.span
                   layoutId={`segment-${label}`}
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  className="absolute inset-0 -z-10 rounded-2xl bg-brand-50 dark:bg-brand-600/20"
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  className="absolute inset-0 -z-10 rounded-xl bg-brand-50 shadow-glow dark:bg-brand-400/10"
                 />
               )}
-              <span className="text-sm font-semibold">{opt.label}</span>
+              <span className="text-[13px] font-semibold">{opt.label}</span>
               {opt.hint && (
-                <span
-                  className={clsx(
-                    'mt-0.5 text-[11px]',
-                    active ? 'text-brand-600' : 'text-slate-400'
-                  )}
-                >
+                <span className={clsx('mt-0.5 text-[10.5px] leading-snug', active ? 'text-brand-700 dark:text-brand-300' : 'text-stone-400')}>
                   {opt.hint}
                 </span>
               )}

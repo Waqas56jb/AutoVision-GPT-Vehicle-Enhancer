@@ -4,6 +4,7 @@ import { enhanceImage } from '../api/enhance.api.js';
 import { compressImage } from '../utils/compressImage.js';
 import { backgroundToFile } from '../utils/backgroundStorage.js';
 import { BATCH_CONCURRENCY, MAX_ATTEMPTS, fileKey } from '../constants/index.js';
+import { saveResult, clearResults as clearStoredResults } from '../utils/workspaceStorage.js';
 
 /**
  * Unified processing hook (single page). Builds one job per
@@ -59,7 +60,10 @@ export function useProcess() {
       const stock = (stocks[fileKey(file)] || '').trim();
       colorPasses.forEach((c) => {
         jobs.push({
-          key: `${file.name}-${vIdx}-${c ? c.key : 'orig'}`,
+          // Keyed on the photo's identity (not its position), so removing or
+          // re-ordering photos never attaches a render to the wrong car.
+          key: `${fileKey(file)}::${c ? c.key : 'orig'}`,
+          fileKey: fileKey(file),
           file,
           fileName: file.name,
           vIndex: vIdx,
@@ -79,23 +83,34 @@ export function useProcess() {
 
     cooldownUntil.current = 0;
     setIsRunning(true);
+    /* The new batch goes first; earlier renders of OTHER photos are kept — a
+       paid render is never thrown away just because another batch ran. Only a
+       re-render of the same photo + colour replaces its previous result. */
+    const batchKeys = new Set(jobs.map((j) => j.key));
     setResults((prev) => {
-      prev.forEach((r) => r.originalUrl && URL.revokeObjectURL(r.originalUrl));
-      return jobs.map((j) => ({
-        key: j.key,
-        name: j.label,
-        // Position of the source photo in the upload — tag rules like
-        // "first photo" key off this.
-        vIndex: j.vIndex,
-        stock: j.stock,
-        downloadName: j.downloadName,
-        hex: j.color?.hex || null,
-        originalUrl: URL.createObjectURL(j.file),
-        status: 'pending',
-        image: null,
-        meta: null,
-        error: null,
-      }));
+      prev
+        .filter((r) => batchKeys.has(r.key))
+        .forEach((r) => r.originalUrl && URL.revokeObjectURL(r.originalUrl));
+      return [
+        ...jobs.map((j, i) => ({
+          key: j.key,
+          fileKey: j.fileKey,
+          name: j.label,
+          // Position of the source photo in the upload — tag rules like
+          // "first photo" key off this.
+          vIndex: j.vIndex,
+          order: i,
+          stock: j.stock,
+          downloadName: j.downloadName,
+          hex: j.color?.hex || null,
+          originalUrl: URL.createObjectURL(j.file),
+          status: 'pending',
+          image: null,
+          meta: null,
+          error: null,
+        })),
+        ...prev.filter((r) => !batchKeys.has(r.key)),
+      ];
     });
 
     const lanes = Math.min(BATCH_CONCURRENCY, jobs.length);
@@ -115,8 +130,8 @@ export function useProcess() {
       return compressedCache.get(name);
     };
 
-    const updateAt = (index, patch) =>
-      setResults((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    const updateByKey = (key, patch) =>
+      setResults((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
     /** One image, with backoff on rate limits. */
     const renderJob = async (job) => {
@@ -160,11 +175,28 @@ export function useProcess() {
         const job = jobs[index];
         try {
           const data = await renderJob(job);
-          updateAt(index, { status: 'done', image: data.image, meta: data.meta });
+          updateByKey(job.key, { status: 'done', image: data.image, meta: data.meta });
+          // Persist straight away: a refresh mid-batch must not lose paid renders.
+          saveResult({
+            key: job.key,
+            fileKey: job.fileKey,
+            name: job.label,
+            order: index,
+            stock: job.stock,
+            downloadName: job.downloadName,
+            hex: job.color?.hex || null,
+            status: 'done',
+            image: data.image,
+            meta: data.meta,
+          }).catch(() =>
+            toast.error('This browser could not save a render — download it before closing.', {
+              id: 'result-storage',
+            })
+          );
         } catch (err) {
           const message =
             err?.response?.data?.error?.message || err?.message || 'Failed to process.';
-          updateAt(index, { status: 'error', error: message });
+          updateByKey(job.key, { status: 'error', error: message });
         }
       }
     };
@@ -175,14 +207,26 @@ export function useProcess() {
     toast.success('All images processed!', { id: toastId });
   }, []);
 
+  /** Explicit "clear results" — the only way renders are removed. */
   const reset = useCallback(() => {
     setResults((prev) => {
       prev.forEach((r) => r.originalUrl && URL.revokeObjectURL(r.originalUrl));
       return [];
     });
+    clearStoredResults().catch(() => {});
   }, []);
 
-  return { isRunning, results, run, reset };
+  /** Bring back saved renders after a reload. `photoFor(fileKey)` → File|undefined. */
+  const restore = useCallback((saved, photoFor) => {
+    setResults(
+      saved.map((r) => {
+        const file = photoFor(r.fileKey);
+        return { ...r, status: 'done', error: null, originalUrl: file ? URL.createObjectURL(file) : null };
+      })
+    );
+  }, []);
+
+  return { isRunning, results, run, reset, restore };
 }
 
 export default useProcess;

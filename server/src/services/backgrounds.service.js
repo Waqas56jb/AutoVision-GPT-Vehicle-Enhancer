@@ -10,6 +10,19 @@ export const BACKGROUNDS_DIR = path.resolve(__dirname, '../../backgrounds');
 
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 
+/**
+ * Backgrounds shipped with the app. They can never be deleted through the API —
+ * the endpoint is public, and one stray request would otherwise wipe a preset
+ * for every user until the next deploy.
+ */
+export const BUILT_IN_BACKGROUNDS = new Set([
+  'dealer-showroom.jpg',
+  'warm-showroom.png',
+  'studio-light-grey.png',
+  'studio-charcoal.png',
+  'outdoor-blue-sky.png',
+]);
+
 /** Ensure the backgrounds folder exists. */
 function ensureDir() {
   if (!fs.existsSync(BACKGROUNDS_DIR)) fs.mkdirSync(BACKGROUNDS_DIR, { recursive: true });
@@ -36,7 +49,14 @@ export function listBackgrounds() {
     .readdirSync(BACKGROUNDS_DIR)
     .filter((f) => ALLOWED_EXT.has(path.extname(f).toLowerCase()))
     .sort()
-    .map((f) => ({ id: f, name: prettyName(f), url: `/backgrounds/${encodeURIComponent(f)}` }));
+    .map((f) => ({
+      id: f,
+      name: prettyName(f),
+      url: `/backgrounds/${encodeURIComponent(f)}`,
+      builtIn: BUILT_IN_BACKGROUNDS.has(f),
+    }))
+    // Built-in scenes first, then uploads.
+    .sort((a, b) => Number(b.builtIn) - Number(a.builtIn));
 }
 
 /**
@@ -84,6 +104,7 @@ export async function saveBackground(buffer, originalName = 'background', now = 
  * @param {string} id
  */
 export function deleteBackground(id) {
+  if (BUILT_IN_BACKGROUNDS.has(path.basename(String(id || '')))) return false;
   const full = resolveBackgroundPath(id);
   if (!full) return false;
   fs.unlinkSync(full);

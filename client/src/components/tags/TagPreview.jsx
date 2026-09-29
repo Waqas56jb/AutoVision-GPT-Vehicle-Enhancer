@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { drawComposite } from '../../tags/renderTags.js';
 import { tagsSignature } from '../../tags/tagModel.js';
@@ -9,6 +9,7 @@ import { tagsSignature } from '../../tags/tagModel.js';
  */
 export default function TagPreview({ src, tags, width = 640, className }) {
   const ref = useRef(null);
+  const [ready, setReady] = useState(false);
   const sig = useMemo(() => tagsSignature(tags), [tags]);
 
   useEffect(() => {
@@ -16,7 +17,9 @@ export default function TagPreview({ src, tags, width = 640, className }) {
     if (!canvas) return undefined;
     let live = true;
     const t = setTimeout(() => {
-      drawComposite(canvas, src || null, tags, { width, isCurrent: () => live }).catch(() => {});
+      drawComposite(canvas, src || null, tags, { width, isCurrent: () => live })
+        .then((drawn) => drawn && live && setReady(true))
+        .catch(() => {});
     }, 40);
     return () => {
       live = false;
@@ -26,11 +29,15 @@ export default function TagPreview({ src, tags, width = 640, className }) {
   }, [src, sig, width]);
 
   return (
-    <canvas
-      ref={ref}
-      width={width}
-      height={Math.round((width * 853) / 1280)}
-      className={clsx('block h-auto w-full bg-brand-50 dark:bg-white/5', className)}
-    />
+    <div className="relative">
+      <canvas
+        ref={ref}
+        width={width}
+        height={Math.round((width * 853) / 1280)}
+        className={clsx('block h-auto w-full bg-stone-100 dark:bg-white/5', className)}
+      />
+      {/* A large photo takes a moment to decode — shimmer instead of a blank box. */}
+      {!ready && <div className="skeleton absolute inset-0" />}
+    </div>
   );
 }
