@@ -1,3 +1,22 @@
+# Current deployment (Railway)
+
+| Service  | Root Directory | URL |
+|----------|----------------|-----|
+| Backend  | `server`       | https://autovision-gpt-vehicle-enhancer-production.up.railway.app |
+| Frontend | `client`       | https://sweet-joy-production-419e.up.railway.app |
+
+This repo holds TWO apps (`server/`, `client/`). Every Railway service built from it
+MUST have **Settings → Source → Root Directory** set, otherwise the build fails with
+`Railpack could not determine how to build the app`.
+
+- Backend variables: `OPENAI_API_KEY` (required), `NODE_ENV=production`.
+- Frontend: the backend URL is baked in at build time from `client/.env.production`
+  (`VITE_API_BASE_URL`). If the frontend service also has a `VITE_API_BASE_URL`
+  variable, it OVERRIDES the file — keep it equal to the backend URL above, or delete it.
+  After changing either, redeploy the frontend.
+
+---
+
 # Deploying AutoVision GPT to Vercel
 
 You deploy **two separate Vercel projects** from the same GitHub repo:
