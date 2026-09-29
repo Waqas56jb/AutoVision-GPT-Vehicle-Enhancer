@@ -9,22 +9,22 @@ import { downloadDataUrl } from './download.js';
  * suffix only when two cars would otherwise collide (or a colour variant shares a
  * stock number), so nothing silently overwrites anything.
  *
- * @param {{name:string, dataUrl:string}[]} entries  name is the desired filename (no extension)
+ * @param {{name:string, dataUrl?:string, blob?:Blob}[]} entries  name is the desired filename (no extension)
  * @param {string} [zipName]
  */
 export async function downloadZip(entries, zipName = 'autovision-images.zip') {
   const zip = new JSZip();
   const used = new Map();
 
-  for (const { name, dataUrl } of entries) {
+  for (const { name, dataUrl, blob } of entries) {
     const base = sanitise(name);
     // De-duplicate filenames so two cars with the same stock number both survive.
     const n = (used.get(base) || 0) + 1;
     used.set(base, n);
     const filename = `${base}${n > 1 ? `-${n}` : ''}.png`;
 
-    const b64 = dataUrl.split(',')[1];
-    zip.file(filename, b64, { base64: true });
+    if (blob) zip.file(filename, blob);
+    else zip.file(filename, dataUrl.split(',')[1], { base64: true });
   }
 
   const blob = await zip.generateAsync({ type: 'blob' });

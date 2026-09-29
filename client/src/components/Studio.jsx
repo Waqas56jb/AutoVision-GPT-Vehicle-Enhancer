@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Images, Mountain, Palette, BadgeCheck, Wand2, Loader2, Moon, Sun } from 'lucide-react';
 import clsx from 'clsx';
@@ -6,7 +7,7 @@ import StudioRail from './StudioRail.jsx';
 import MultiImageDropzone from './MultiImageDropzone.jsx';
 import BackgroundManager from './BackgroundManager.jsx';
 import ColorPicker from './ColorPicker.jsx';
-import MarketingTag from './MarketingTag.jsx';
+import TagLibrary from './tags/TagLibrary.jsx';
 import CanvasStage from './CanvasStage.jsx';
 import Filmstrip from './Filmstrip.jsx';
 import Inspector from './Inspector.jsx';
@@ -14,6 +15,9 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import { ProgressBar } from './Loader.jsx';
 import { useProcess } from '../hooks/useProcess.js';
 import { useTheme } from '../hooks/useTheme.jsx';
+import { useTagLibrary } from '../hooks/useTagLibrary.js';
+import { createTag, ruleApplies, tagsForResult } from '../tags/tagModel.js';
+import { compositeToBlob } from '../tags/renderTags.js';
 import { downloadDataUrl } from '../utils/download.js';
 import { downloadZip } from '../utils/zip.js';
 import { getPref, setPref } from '../utils/prefs.js';
@@ -50,7 +54,9 @@ export default function Studio() {
     readPref('format', DEFAULT_FORMAT, FORMAT_OPTIONS.map((o) => o.value))
   );
   const [notes, setNotes] = useState('');
-  const [tag, setTag] = useState({ style: 'none' }); // marketing warranty tag
+  const library = useTagLibrary(); // saved marketing tags (this device)
+  const [overrides, setOverrides] = useState({}); // per-photo tag switches: {resultKey: {tagId: bool}}
+  const [editing, setEditing] = useState(null); // {draft, isNew} while a tag is being edited
 
   const [pickedKey, setPickedKey] = useState(null);
   const [confirm, setConfirm] = useState(null); // 'reset' | 'generate' | null
@@ -87,11 +93,75 @@ export default function Studio() {
     [results, pickedKey]
   );
 
+  const tagsFor = useCallback(
+    (r) => tagsForResult(library.tags, r, overrides),
+    [library.tags, overrides]
+  );
+
+  /* The stage shows the photo's tags — and, while a tag is being edited, the
+     live draft in its place (even if its rule would skip this photo), so every
+     change is visible full size as it is made. */
+  const stageTags = useMemo(() => {
+    if (!selected) return [];
+    if (!editing) return tagsFor(selected);
+    const { draft } = editing;
+    const own = overrides[selected.key] || {};
+    const list = library.tags
+      .map((t) => (t.id === draft.id ? draft : t))
+      .filter((t) => t.id === draft.id || (t.id in own ? own[t.id] : ruleApplies(t, selected)));
+    return list.some((t) => t.id === draft.id) ? list : [...list, draft];
+  }, [selected, editing, library.tags, overrides, tagsFor]);
+
+  const tagCounts = useMemo(
+    () => Object.fromEntries(results.map((r) => [r.key, tagsFor(r).length])),
+    [results, tagsFor]
+  );
+
+  const openEditor = (tag) => {
+    setEditing(tag ? { draft: { ...tag }, isNew: false } : { draft: createTag(), isNew: true });
+    setSection('tag');
+  };
+
+  const saveEditing = () => {
+    if (!editing) return;
+    const before = library.tags.find((t) => t.id === editing.draft.id);
+    const saved = library.saveTag(editing.draft);
+    setOverrides((prev) => {
+      let next = prev;
+      // A changed rule means "apply it like this now" — drop old per-photo switches.
+      if (before && before.applyTo !== saved.applyTo) {
+        next = Object.fromEntries(
+          Object.entries(prev).map(([k, v]) => {
+            const { [saved.id]: _drop, ...rest } = v;
+            return [k, rest];
+          })
+        );
+      }
+      // A new hand-picked tag starts on the photo it was designed against.
+      if (editing.isNew && saved.applyTo === 'manual' && selected) {
+        next = { ...next, [selected.key]: { ...(next[selected.key] || {}), [saved.id]: true } };
+      }
+      return next;
+    });
+    setEditing(null);
+    toast.success(editing.isNew ? 'Tag saved.' : 'Tag updated.');
+  };
+
+  const togglePhotoTag = (tagId, value) => {
+    if (!selected) return;
+    setOverrides((prev) => ({ ...prev, [selected.key]: { ...(prev[selected.key] || {}), [tagId]: value } }));
+  };
+
+  const resetPhotoTags = () => {
+    if (!selected) return;
+    setOverrides(({ [selected.key]: _drop, ...rest }) => rest);
+  };
+
   const SECTIONS = [
     { id: 'photos', label: 'Vehicle photos', icon: Images, badge: vehicles.length },
     { id: 'background', label: 'Background', icon: Mountain },
     { id: 'colour', label: 'Paint colour', icon: Palette, badge: colors.length },
-    { id: 'tag', label: 'Marketing tag', icon: BadgeCheck, badge: tag.style !== 'none' ? 1 : 0 },
+    { id: 'tag', label: 'Marketing tags', icon: BadgeCheck, badge: library.tags.length },
   ];
   const activeSection = SECTIONS.find((s) => s.id === section);
 
@@ -104,14 +174,15 @@ export default function Studio() {
     setFraming(DEFAULT_FRAMING);
     setFormat(DEFAULT_FORMAT);
     setNotes('');
-    setTag({ style: 'none' });
+    setOverrides({});
+    setEditing(null);
     setPickedKey(null);
     setSection('photos');
   };
 
   const startGenerate = () => {
     setPickedKey(null);
-    run({ vehicles, background, colors, framing, format, notes, stocks, tag });
+    run({ vehicles, background, colors, framing, format, notes, stocks });
   };
 
   const handleGenerate = () => {
@@ -125,13 +196,21 @@ export default function Studio() {
   const downloadAll = async () => {
     const done = results.filter((r) => r.status === 'done' && r.image);
     if (!done.length) return;
-    const entries = done.map((r) => ({
-      name: r.downloadName || r.name,
-      dataUrl: r.image,
-    }));
+    const toastId = toast.loading(`Preparing ${done.length} image${done.length === 1 ? '' : 's'}…`);
     try {
+      // One at a time: 100 full-size canvases at once would exhaust memory.
+      const entries = [];
+      for (const r of done) {
+        const tags = tagsFor(r);
+        entries.push({
+          name: r.downloadName || r.name,
+          ...(tags.length ? { blob: await compositeToBlob(r.image, tags) } : { dataUrl: r.image }),
+        });
+      }
       await downloadZip(entries, 'autovision-images.zip');
+      toast.success('Download started.', { id: toastId });
     } catch {
+      toast.error('Could not build the ZIP — downloading photos one by one.', { id: toastId });
       done.forEach((r, i) =>
         setTimeout(() => downloadDataUrl(r.image, `${r.downloadName || r.name}.png`), i * 250)
       );
@@ -233,7 +312,20 @@ export default function Studio() {
                 <ColorPicker value={colors} onChange={setColors} disabled={isRunning} />
               </div>
               <div className={clsx(section !== 'tag' && 'hidden')}>
-                <MarketingTag value={tag} onChange={setTag} disabled={isRunning} />
+                <TagLibrary
+                  library={library}
+                  editing={editing}
+                  onNew={() => openEditor(null)}
+                  onEdit={openEditor}
+                  onDraftChange={(next) =>
+                    setEditing((e) =>
+                      e ? { ...e, draft: typeof next === 'function' ? next(e.draft) : next } : e
+                    )
+                  }
+                  onSave={saveEditing}
+                  onCancel={() => setEditing(null)}
+                  previewSrc={selected?.status === 'done' ? selected.image : null}
+                />
               </div>
             </div>
           </aside>
@@ -245,12 +337,14 @@ export default function Studio() {
               settled={settledCount}
               total={results.length}
               format={format}
+              tags={stageTags}
               onAddPhotos={() => setSection('photos')}
             />
             <Filmstrip
               results={results}
               selectedKey={selected?.key}
               onSelect={setPickedKey}
+              tagCounts={tagCounts}
             />
           </main>
 
@@ -266,6 +360,15 @@ export default function Studio() {
             hasResults={results.length > 0}
             onDownloadAll={downloadAll}
             onReset={() => setConfirm('reset')}
+            photoTags={{
+              tags: library.tags,
+              selected,
+              overrides,
+              onToggle: togglePhotoTag,
+              onReset: resetPhotoTags,
+              onEdit: openEditor,
+              onCreate: () => openEditor(null),
+            }}
           />
         </div>
       </div>
@@ -273,7 +376,7 @@ export default function Studio() {
       <ConfirmDialog
         open={confirm === 'reset'}
         title="Start over?"
-        message="This clears the current batch, photos and output settings. Saved backgrounds on this device are kept."
+        message="This clears the current batch, photos and output settings. Saved backgrounds and tags on this device are kept."
         confirmLabel="Start over"
         danger
         onCancel={() => setConfirm(null)}

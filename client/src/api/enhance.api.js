@@ -20,10 +20,6 @@ export async function enhanceImage({
   notes,
   framing,
   format,
-  tagStyle,
-  tagTitle,
-  tagSubtitle,
-  tagFooter,
   onUploadProgress,
 }) {
   const form = new FormData();
@@ -38,13 +34,8 @@ export async function enhanceImage({
   if (notes) form.append('notes', notes);
   if (framing) form.append('framing', framing);
   if (format) form.append('format', format);
-  // Marketing warranty tag (optional).
-  if (tagStyle && tagStyle !== 'none') {
-    form.append('tagStyle', tagStyle);
-    if (tagTitle) form.append('tagTitle', tagTitle);
-    if (tagSubtitle) form.append('tagSubtitle', tagSubtitle);
-    if (tagFooter) form.append('tagFooter', tagFooter);
-  }
+  // Marketing tags are NOT sent: they are drawn in the browser after the render
+  // (src/tags), so they can be changed per photo without re-rendering.
 
   const { data } = await apiClient.post('/api/enhance', form, {
     headers: { 'Content-Type': 'multipart/form-data' },

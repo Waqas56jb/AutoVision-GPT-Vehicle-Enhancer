@@ -84,6 +84,9 @@ IDENTICAL to IMAGE 1, pixel for pixel:
 - Number of doors, mirror shape, aerial, door handles, spoiler.
 - Wheel and rim design, spoke count, brake calipers, tyre profile and sidewall.
 - The car's colour, trim level and any dealer stickers.
+- Every stripe, decal, wrap, pinstripe, two-tone roof and contrast bonnet panel —
+  same shape, same colour, same place. A black bonnet stripe on IMAGE 1 is a black
+  bonnet stripe on the output; it is part of the car, not dirt or a reflection.
 
 BRANDING AND NAMES — THE MOST SERIOUS RULE HERE:
 - NEVER change the manufacturer. Do not turn this car into a different brand.
@@ -137,6 +140,21 @@ VIEWPOINT vs LEVELLING — these are two different things, do not confuse them:
 If you are unsure about a detail, reproduce what IMAGE 1 shows. Never invent.
 `.trim();
 
+/**
+ * Appended right after RULE ZERO when the car MOVES to a new scene (replace /
+ * studio). Not used for keep-background, where the original reflections are the
+ * correct ones. Without it, "copy the car pixel for pixel" made the model copy
+ * the old street's buildings in the windscreen — the clearest pasted-car tell.
+ */
+const REFLECTION_EXCEPTION = `
+THE ONE EXCEPTION — REFLECTIONS ARE NOT PART OF THE CAR:
+- The buildings, trees, sky, street and other cars mirrored in the windscreen, windows,
+  wing mirrors and glossy paint of IMAGE 1 are light from the OLD location. They are
+  not the car's design and must NOT be copied. Copying them is what makes a car look
+  cut out and pasted. Replace them with reflections of the new scene.
+- This exception covers reflections only. Badges, stripes, decals, tint and trim stay.
+`.trim();
+
 /** What to clean up, without touching the car's identity. */
 const CLEANUP_RULES = `
 CLEAN-UP (applies to the scene and the finish, never to the car's design):
@@ -171,6 +189,16 @@ SCENE INTEGRATION — it must look genuinely photographed there, not pasted:
   car in it — subtle, not a mirror.
 - Share one camera between car and background: matching perspective and depth of field.
 - Let the new scene cast subtle, appropriate reflections onto the glass and paint.
+
+REFLECTIONS MUST BELONG TO THE NEW SCENE — the most common giveaway of a pasted car:
+- Remove EVERY reflection of the ORIGINAL location: buildings, windows, trees, sky,
+  clouds, street lights, other cars, people and the photographer.
+- Check each surface one by one: windscreen, side windows, rear glass, the wing-mirror
+  GLASS and the mirror HOUSINGS, bonnet, roof, doors, bumpers, chrome and wheels.
+- In their place show only soft reflections of the new scene (its lights, walls, sky
+  and floor) or a clean neutral gradient that agrees with it.
+- Reflections are surface light, not design: removing them must never remove a
+  stripe, decal, badge or trim piece, and must never invent a cabin interior.
 `.trim();
 
 /**
@@ -251,6 +279,10 @@ PAINT COLOUR CHANGE (apply this, and only this, to the car):
 - Keep the paint's existing highlights, reflections and shading — re-render them in the
   new colour under the same light. It must look like real automotive paint with correct
   gloss and depth, not a flat colour fill.
+- It must look like a real factory paint photographed in this light: panels facing
+  away from the light are clearly darker, highlights are lighter, and the scene still
+  reflects in the clear coat. Do NOT exaggerate saturation or brightness — no neon,
+  no toy-like or CGI look.
 - Everything in RULE ZERO still applies. The colour changes; the CAR does not.`.trim();
 }
 
@@ -275,6 +307,8 @@ that SAME vehicle into the scene from IMAGE 2. Produce one photorealistic advert
 image, finished to professional dealership standard.
 
 ${FIDELITY_RULES}
+
+${REFLECTION_EXCEPTION}
 
 ${CLEANUP_RULES}
 
@@ -301,6 +335,8 @@ gradient) standing on a polished reflective floor.
 
 ${FIDELITY_RULES}
 
+${REFLECTION_EXCEPTION}
+
 ${CLEANUP_RULES}
 
 STUDIO INTEGRATION:
@@ -308,6 +344,16 @@ STUDIO INTEGRATION:
 - A tight dark contact shadow under each tyre, plus a soft cast shadow on the floor.
 - A restrained reflection of the car in the polished floor.
 - No props, no text, no other objects — only the car on the backdrop.
+
+REFLECTIONS MUST BELONG TO THE NEW SCENE — the most common giveaway of a pasted car:
+- Remove EVERY reflection of the ORIGINAL location: buildings, windows, trees, sky,
+  clouds, street lights, other cars, people and the photographer.
+- Check each surface one by one: windscreen, side windows, rear glass, the wing-mirror
+  GLASS and the mirror HOUSINGS, bonnet, roof, doors, bumpers, chrome and wheels.
+- In their place show only soft reflections of the studio (its softboxes, backdrop
+  and floor) or a clean neutral gradient that agrees with it.
+- Reflections are surface light, not design: removing them must never remove a
+  stripe, decal, badge or trim piece, and must never invent a cabin interior.
 
 ${composition(framing)}
 ${clause ? `\n${clause}\n` : ''}

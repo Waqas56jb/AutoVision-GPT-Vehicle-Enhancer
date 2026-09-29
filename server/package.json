@@ -13,6 +13,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -23,5 +24,10 @@
     "multer": "^2.2.0",
     "openai": "^6.47.0",
     "sharp": "^0.35.0"
+  },
+  "overrides": {
+    "@huggingface/transformers": {
+      "sharp": "$sharp"
+    }
   }
 }

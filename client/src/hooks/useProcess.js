@@ -35,7 +35,7 @@ export function useProcess() {
      collects its own 429 — the batch degrades instead of throttling. */
   const cooldownUntil = useRef(0);
 
-  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes, stocks = {}, tag = {} }) => {
+  const run = useCallback(async ({ vehicles, background, colors, framing, format, notes, stocks = {} }) => {
     if (!vehicles?.length) {
       toast.error('Add at least one vehicle photo.');
       return;
@@ -62,6 +62,7 @@ export function useProcess() {
           key: `${file.name}-${vIdx}-${c ? c.key : 'orig'}`,
           file,
           fileName: file.name,
+          vIndex: vIdx,
           stock,
           color: c,
           label: c ? `${file.name} · ${c.name}` : file.name,
@@ -83,6 +84,9 @@ export function useProcess() {
       return jobs.map((j) => ({
         key: j.key,
         name: j.label,
+        // Position of the source photo in the upload — tag rules like
+        // "first photo" key off this.
+        vIndex: j.vIndex,
         stock: j.stock,
         downloadName: j.downloadName,
         hex: j.color?.hex || null,
@@ -134,10 +138,6 @@ export function useProcess() {
             framing,
             format,
             notes,
-            tagStyle: tag.style,
-            tagTitle: tag.title,
-            tagSubtitle: tag.subtitle,
-            tagFooter: tag.footer,
           });
         } catch (err) {
           if (attempt >= MAX_ATTEMPTS || !isRetryable(err)) throw err;

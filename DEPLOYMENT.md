@@ -86,3 +86,22 @@ Locally, leave `VITE_API_BASE_URL` empty — the Vite proxy handles `/api`.
 - [ ] Client project root = `client`, env `VITE_API_BASE_URL` = server URL
 - [ ] Server `CLIENT_ORIGIN` = client URL
 - [ ] Ran a real image end-to-end on the deployed client
+
+---
+
+## Railway (current backend host) — car detector
+
+Auto-framing measures the car with a local object detector (`@huggingface/transformers`,
+DETR ResNet-50, Apache-2.0). Nothing to configure, but know that:
+
+- On the first start after a deploy, the server downloads the model (~42 MB) from
+  huggingface.co and logs `Vehicle detector ready`. Allow ~10 s.
+- It uses roughly 200–300 MB of extra RAM.
+- If the model cannot load (no internet, unsupported CPU), the log says
+  `Vehicle detector unavailable` and framing falls back to the older edge-based
+  measurement. Renders never fail because of it.
+- `package.json` pins transformers to the server's own `sharp` (the `overrides` entry).
+  Do not remove it: two copies of sharp/libvips in one process break image processing.
+
+Marketing tags are drawn in the browser (`client/src/tags`), so tag changes only need
+a Vercel (frontend) deploy.

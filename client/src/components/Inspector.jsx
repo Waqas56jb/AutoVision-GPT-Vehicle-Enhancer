@@ -1,5 +1,6 @@
 import { Download, RotateCcw, Sliders } from 'lucide-react';
 import SegmentedControl from './SegmentedControl.jsx';
+import PhotoTags from './tags/PhotoTags.jsx';
 import { FRAMING_OPTIONS, FORMAT_OPTIONS } from '../constants/index.js';
 
 /**
@@ -19,6 +20,7 @@ export default function Inspector({
   hasResults,
   onDownloadAll,
   onReset,
+  photoTags,
 }) {
   return (
     <aside className="pane flex w-full shrink-0 flex-col border-t lg:h-full lg:w-[300px] lg:border-l lg:border-t-0">
@@ -28,6 +30,13 @@ export default function Inspector({
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto p-4 lg:min-h-0">
+        {/* Tags are applied after rendering, so they only matter once there are results. */}
+        {hasResults && photoTags && (
+          <div className="border-b border-brand-100 pb-5 dark:border-white/10">
+            <PhotoTags {...photoTags} />
+          </div>
+        )}
+
         <SegmentedControl
           label="Vehicle size in frame"
           options={FRAMING_OPTIONS}

@@ -169,14 +169,22 @@ export function topEdgeInRange(box, x0, x1) {
  * @param {number} opts.outH
  * @param {number} [opts.groundBias]  0..1 where the car's vertical centre should sit
  *                                    (0.5 = middle; lower puts more ground below)
+ * @param {object|null} [opts.box]    a car box from the object detector
+ *                                    (vehicleDetect.service). When missing or not
+ *                                    ok, the edge-energy measurement is used.
  * @returns {Promise<{buffer:Buffer, applied:boolean, fill:number, reason:string}>}
  */
-export async function autoFrameToFill(imageBuffer, { fillWidth, outW, outH, groundBias = 0.52 }) {
+export async function autoFrameToFill(imageBuffer, { fillWidth, outW, outH, groundBias = 0.52, box: detected = null }) {
   const meta = await sharp(imageBuffer).metadata();
   const W = meta.width;
   const H = meta.height;
 
-  const box = await measureCarBox(imageBuffer);
+  // The detector's box is trusted over edge energy, which a busy showroom fools.
+  let box = detected?.ok ? detected : await measureCarBox(imageBuffer);
+  if (detected?.ok && box.w > MAX_BOX && box.h > MAX_BOX) {
+    box = { ...box, ok: false, reason: 'car already fills the frame' };
+  }
+  const source = detected?.ok ? 'detector' : 'edges';
 
   // Not confident → deliver the plain resize. Never worse than before.
   if (!box.ok) {
@@ -213,8 +221,17 @@ export async function autoFrameToFill(imageBuffer, { fillWidth, outW, outH, grou
   // Clamp the crop to the image. If the target crop is bigger than the source
   // (car is small and we'd need to invent pixels), cap at the source and accept
   // a slightly smaller fill rather than upscaling past 1:1.
-  cropW = Math.min(cropW, W);
-  cropH = Math.min(cropH, H);
+  // Shrink BOTH sides together: clamping width and height independently gives a
+  // crop of the wrong aspect, which the final resize then squashes — a square
+  // output made the car ~15% narrower than it really is.
+  if (cropW > W) {
+    cropW = W;
+    cropH = cropW / outAspect;
+  }
+  if (cropH > H) {
+    cropH = H;
+    cropW = cropH * outAspect;
+  }
 
   let left = Math.round(cx - cropW / 2);
   let top = Math.round(cy - cropH / 2 - (0.5 - groundBias) * cropH);
@@ -232,7 +249,7 @@ export async function autoFrameToFill(imageBuffer, { fillWidth, outW, outH, grou
 
   const achievedFill = bw / cw;
   logger.info(
-    `Auto-framed — car ${(box.w * 100) | 0}% of source → ${(achievedFill * 100) | 0}% of output ` +
+    `Auto-framed (${source}) — car ${(box.w * 100) | 0}% of source → ${(achievedFill * 100) | 0}% of output ` +
       `(target ${(fillWidth * 100) | 0}%).`
   );
   return { buffer, applied: true, fill: achievedFill, reason: 'framed' };

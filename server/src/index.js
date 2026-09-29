@@ -2,6 +2,7 @@ import './config/fonts.js'; // configure bundled fonts before any image renderin
 import config from './config/env.js';
 import { createApp } from './app.js';
 import logger from './utils/logger.js';
+import { warmUpVehicleDetector } from './services/vehicleDetect.service.js';
 
 /**
  * Application entry point. Validates config (via env.js import), then starts
@@ -14,6 +15,8 @@ function start() {
     logger.success(`AutoVision API listening on http://localhost:${config.port} [${config.env}]`);
     logger.info(`Image model: ${config.openai.imageModel} | size: ${config.openai.imageSize} | quality: ${config.openai.imageQuality}`);
     logger.info(`CORS: public (any origin) | rate limit: ${config.rateLimit.max} req / ${config.rateLimit.windowMs / 60000} min per IP`);
+    // Load the car detector now so the first render is not held up by it.
+    warmUpVehicleDetector();
   });
 
   const shutdown = (signal) => {

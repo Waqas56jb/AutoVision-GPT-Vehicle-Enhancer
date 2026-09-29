@@ -6,7 +6,8 @@ function ThemedToaster() {
   const { isDark } = useTheme();
   return (
     <Toaster
-      position="bottom-center"
+      // Top: at the bottom it sat over the filmstrip and swallowed clicks on the photos.
+      position="top-center"
       toastOptions={{
         style: {
           background: isDark ? 'rgba(15,32,80,0.94)' : 'rgba(255,255,255,0.92)',

@@ -9,6 +9,8 @@ backgrounds/*
 !backgrounds/studio-charcoal.png
 !backgrounds/warm-showroom.png
 !backgrounds/outdoor-blue-sky.png
+# The client's own showroom plate (sent in chat) — shipped so every device has it
+!backgrounds/dealer-showroom.jpg
 uploads/*
 !uploads/.gitkeep
 outputs/*

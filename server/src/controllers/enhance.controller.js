@@ -5,6 +5,7 @@ import logger from '../utils/logger.js';
 import { normaliseInput, describe, fromBase64, resizeTo } from '../services/image.service.js';
 import { enhanceVehicleImage } from '../services/openai.service.js';
 import { autoFrameToFill, measureCarBox } from '../services/autoFrame.service.js';
+import { detectVehicleBox } from '../services/vehicleDetect.service.js';
 import { detectBrand } from '../services/brandDetect.service.js';
 import { applyMarketingTag } from '../services/overlay.service.js';
 import { resolveBackgroundPath } from '../services/backgrounds.service.js';
@@ -113,7 +114,8 @@ export const enhance = asyncHandler(async (req, res) => {
        — the model's own framing was landing at ~60–75% regardless of the prompt.
        On any low-confidence measurement it safely falls back to a plain resize. */
     const fill = FRAMING_FILL[framing] || FRAMING_FILL[DEFAULT_FRAMING];
-    const framed = await autoFrameToFill(genBuf, { fillWidth: fill, outW, outH });
+    const box = await detectVehicleBox(genBuf);
+    const framed = await autoFrameToFill(genBuf, { fillWidth: fill, outW, outH, box });
     finalBuf = framed.buffer;
     framedApplied = framed.applied;
     framedFill = framed.fill;

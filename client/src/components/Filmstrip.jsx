@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Check } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { Spinner } from './Loader.jsx';
 
@@ -12,7 +12,7 @@ import { Spinner } from './Loader.jsx';
  * @param {string} props.selectedKey
  * @param {(key:string)=>void} props.onSelect
  */
-export default function Filmstrip({ results, selectedKey, onSelect }) {
+export default function Filmstrip({ results, selectedKey, onSelect, tagCounts = {} }) {
   if (!results.length) return null;
 
   const doneCount = results.filter((r) => r.status === 'done').length;
@@ -71,6 +71,16 @@ export default function Filmstrip({ results, selectedKey, onSelect }) {
               {r.status === 'done' && (
                 <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-brand-600 shadow">
                   <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} />
+                </span>
+              )}
+
+              {r.status === 'done' && tagCounts[r.key] > 0 && (
+                <span
+                  className="absolute bottom-1 right-1 inline-flex items-center gap-0.5 rounded-full bg-ink-950/75 px-1.5 py-0.5 text-[9px] font-bold text-white"
+                  title={`${tagCounts[r.key]} tag${tagCounts[r.key] === 1 ? '' : 's'} on this photo`}
+                >
+                  <BadgeCheck className="h-2.5 w-2.5" />
+                  {tagCounts[r.key]}
                 </span>
               )}
 

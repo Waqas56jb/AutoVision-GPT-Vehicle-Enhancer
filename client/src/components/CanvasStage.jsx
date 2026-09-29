@@ -6,16 +6,17 @@ import clsx from 'clsx';
 import ProcessingPanel from './ProcessingPanel.jsx';
 import { Spinner } from './Loader.jsx';
 import { downloadDataUrl } from '../utils/download.js';
+import { useComposite } from '../hooks/useComposite.js';
+import { compositeToBlob } from '../tags/renderTags.js';
 import { FORMAT_ASPECT, DEFAULT_FORMAT } from '../constants/index.js';
 
-function MetaChips({ meta }) {
+function MetaChips({ meta, tagCount }) {
   if (!meta) return null;
   const chips = [];
   if (meta.shotType) chips.push(meta.shotType);
   if (meta.size) chips.push(meta.size);
   if (meta.autoFramed) chips.push(`fill ${Math.round((meta.fill || 0) * 100)}%`);
-  if (meta.tag?.skipped) chips.push('tag skipped');
-  else if (meta.tag?.brand) chips.push(`${meta.tag.brand} tag`);
+  if (tagCount) chips.push(`${tagCount} tag${tagCount === 1 ? '' : 's'}`);
   if (!chips.length) return null;
   return <p className="micro mt-0.5 truncate normal-case tracking-normal">{chips.join(' · ')}</p>;
 }
@@ -26,13 +27,34 @@ export default function CanvasStage({
   settled,
   total,
   format = DEFAULT_FORMAT,
+  tags = [],
   onAddPhotos,
 }) {
   const [view, setView] = useState('compare');
+  const [saving, setSaving] = useState(false);
   const aspect = FORMAT_ASPECT[format] || FORMAT_ASPECT[DEFAULT_FORMAT];
 
   const showProcessing = isRunning && !selected;
   const isDone = selected?.status === 'done' && selected?.image;
+  // The finished photo with its marketing tags drawn on (live while editing).
+  const shown = useComposite(isDone ? selected.image : null, tags);
+
+  const download = async () => {
+    const name = `${selected.downloadName || `enhanced-${selected.name.replace(/\.[^.]+$/, '')}`}.png`;
+    if (!tags.length) {
+      downloadDataUrl(selected.image, name);
+      return;
+    }
+    setSaving(true);
+    try {
+      // Full resolution, lossless — the preview on screen is only a JPEG proxy.
+      const url = URL.createObjectURL(await compositeToBlob(selected.image, tags));
+      downloadDataUrl(url, name);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <section className="stage flex min-h-[420px] flex-1 flex-col overflow-hidden lg:min-h-0">
@@ -49,7 +71,7 @@ export default function CanvasStage({
                 <span className="truncate">{selected.name}</span>
               </p>
               {isDone ? (
-                <MetaChips meta={selected.meta} />
+                <MetaChips meta={selected.meta} tagCount={tags.length} />
               ) : (
                 <p className="micro mt-0.5">
                   {selected.status === 'pending' ? 'Generating…' : 'Failed'}
@@ -91,12 +113,8 @@ export default function CanvasStage({
 
             <button
               type="button"
-              onClick={() =>
-                downloadDataUrl(
-                  selected.image,
-                  `${selected.downloadName || `enhanced-${selected.name.replace(/\.[^.]+$/, '')}`}.png`
-                )
-              }
+              onClick={download}
+              disabled={saving}
               className="btn-primary h-9 px-3.5 text-xs"
             >
               <Download className="h-3.5 w-3.5" />
@@ -153,7 +171,7 @@ export default function CanvasStage({
                           itemOne={
                             <ReactCompareSliderImage src={selected.originalUrl} alt="Original" />
                           }
-                          itemTwo={<ReactCompareSliderImage src={selected.image} alt="Enhanced" />}
+                          itemTwo={<ReactCompareSliderImage src={shown} alt="Enhanced" />}
                           className="h-full w-full"
                         />
                         <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600 backdrop-blur dark:bg-ink-950/80 dark:text-slate-200">
@@ -168,7 +186,7 @@ export default function CanvasStage({
                       </>
                     ) : (
                       <img
-                        src={selected.image}
+                        src={shown}
                         alt={selected.name}
                         className="h-full w-full object-contain"
                       />
